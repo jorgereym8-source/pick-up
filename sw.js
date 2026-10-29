@@ -1,5 +1,5 @@
-const CACHE = 'pickup-v4';
-const ASSETS = ['./', 'index.html', 'style.css', 'app.js', 'cards.js', 'manifest.json', 'icon-192.png', 'icon-512.png', 'icon-180.png'];
+const CACHE = 'pickup-v5';
+const ASSETS = ['./', 'index.html', 'style.css?v=5', 'app.js?v=5', 'cards.js?v=5', 'manifest.json', 'icon-192.png', 'icon-512.png', 'icon-180.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
 });
@@ -10,7 +10,7 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   e.respondWith(
-    fetch(e.request).then(r => {
+    fetch(e.request, new URL(e.request.url).origin === location.origin ? { cache: 'no-store' } : {}).then(r => {
       const copy = r.clone();
       caches.open(CACHE).then(c => c.put(e.request, copy));
       return r;
