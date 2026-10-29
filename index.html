@@ -7,14 +7,14 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Pick up">
-<link rel="manifest" href="manifest.json?v=11">
-<link rel="apple-touch-icon" href="icon-180.png?v=11">
-<link rel="icon" href="icon-192.png?v=11">
+<link rel="manifest" href="manifest.json?v=12">
+<link rel="apple-touch-icon" href="icon-180.png?v=12">
+<link rel="icon" href="icon-192.png?v=12">
 <title>Pick up</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=Montserrat:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;1,500;1,600&display=swap">
-<link rel="stylesheet" href="style.css?v=11">
+<link rel="stylesheet" href="style.css?v=12">
 </head>
 <body>
 <div class="bg-layer" aria-hidden="true"></div>
@@ -183,13 +183,15 @@
   </div>
   <button type="button" class="ghost full" id="btnResetLook">Restablecer apariencia</button>
 
-  <h4>Datos</h4>
+  <h4>Copia de seguridad</h4>
   <div class="group">
-    <button type="button" class="row action" id="btnExport">Exportar copia de seguridad</button>
-    <button type="button" class="row action" id="btnImport">Importar copia de seguridad</button>
+    <button type="button" class="row action" id="btnExport">Hacer copia de seguridad</button>
+    <button type="button" class="row action" id="btnImport">Restaurar una copia</button>
   </div>
-  <input type="file" id="fileImport" accept="application/json" hidden>
-  <p class="foot">Tus cartas y ajustes se guardan en este dispositivo.</p>
+  <input type="file" id="fileImport" accept="application/json,.json,text/plain,.txt" hidden>
+  <p class="foot" id="backupNote"></p>
+  <p class="foot">Tus cartas y ajustes se guardan solo en esta app del iPhone. Para guardarlos en iCloud: pulsa «Hacer copia de seguridad» → «Guardar en Archivos» → iCloud Drive. Para recuperarlos: «Restaurar una copia» → Explorar → iCloud Drive y elige el archivo.</p>
+  <p class="foot"><b>Importante:</b> haz una copia antes de borrar la app de la pantalla de inicio, porque al borrarla el iPhone elimina también sus datos.</p>
   <p class="foot" id="appVersion"></p>
 </section>
 
@@ -313,7 +315,7 @@
 
 <div class="toast" id="toast" role="status"></div>
 
-<script src="cards.js?v=11"></script>
-<script src="app.js?v=11"></script>
+<script src="cards.js?v=12"></script>
+<script src="app.js?v=12"></script>
 </body>
 </html>

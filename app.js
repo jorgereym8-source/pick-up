@@ -836,6 +836,7 @@ function fillSettings() {
   $$('[data-show]').forEach(cb => cb.checked = !!s.show[cb.dataset.show]);
   $$('#fWeekdays button').forEach(b => b.classList.toggle('on', s.weekdays.includes(+b.dataset.d)));
   renderTimes(); syncSchedUI(); renderNotifNote(); renderNext(); renderLookSettings();
+  renderBackupNote();
 }
 function syncSchedUI() {
   const s = state.settings;
@@ -1008,23 +1009,56 @@ $('#btnResetLook').addEventListener('click', () => {
 });
 
 /* ----- Copia de seguridad ----- */
-$('#btnExport').addEventListener('click', async () => {
-  const file = new File([JSON.stringify(state, null, 1)], `pick-up-${isoDate(new Date())}.json`, { type: 'application/json' });
-  try { if (navigator.canShare && navigator.canShare({ files: [file] })) return await navigator.share({ files: [file] }); }
-  catch (e) { if (e.name === 'AbortError') return; }
-  const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name; a.click();
-});
+$('#btnExport').addEventListener('click', exportBackup);
+async function exportBackup() {
+  const data = JSON.stringify(Object.assign({ app: 'pick-up', exportedAt: new Date().toISOString() }, state), null, 1);
+  const stamp = new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', '-');
+  const name = `pick-up-copia-${stamp}.json`;
+  // En iPhone se abre la hoja de compartir: «Guardar en Archivos» → iCloud Drive
+  const candidates = [
+    new File([data], name, { type: 'application/json' }),
+    new File([data], name, { type: 'text/plain' }),
+    new File([data], name.replace(/\.json$/, '.txt'), { type: 'text/plain' }),
+  ];
+  if (navigator.canShare && navigator.share) {
+    for (const file of candidates) {
+      let ok = false;
+      try { ok = navigator.canShare({ files: [file] }); } catch (e) {}
+      if (!ok) continue;
+      try {
+        await navigator.share({ files: [file], title: 'Copia de seguridad de Pick up' });
+        markBackup(); toast('Copia lista');
+      } catch (e) { if (e.name !== 'AbortError') toast('No se pudo compartir la copia'); }
+      return;
+    }
+  }
+  const url = URL.createObjectURL(candidates[0]);
+  const a = document.createElement('a'); a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  markBackup(); toast('Copia descargada');
+}
+function markBackup() { state.lastBackup = Date.now(); save(); renderBackupNote(); }
+function renderBackupNote() {
+  $('#backupNote').textContent = state.lastBackup
+    ? 'Última copia: ' + fmtDay.format(new Date(state.lastBackup)) + ' · ' + fmtTime.format(new Date(state.lastBackup))
+    : 'Aún no has hecho ninguna copia.';
+}
 $('#btnImport').addEventListener('click', () => $('#fileImport').click());
 $('#fileImport').addEventListener('change', async e => {
-  const f = e.target.files[0]; if (!f) return;
-  try {
-    const s = JSON.parse(await f.text());
-    if (!Array.isArray(s.cards)) throw new Error();
-    localStorage.setItem(KEY, JSON.stringify(s));
-    state = load(); save(); applyLook(); fillSettings(); renderPool();
-    toast('Copia importada');
-  } catch (err) { toast('Archivo no válido'); }
-  e.target.value = '';
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  let s;
+  try { s = JSON.parse(await f.text()); if (!Array.isArray(s.cards)) throw new Error(); }
+  catch (err) { return toast('Ese archivo no es una copia de Pick up'); }
+  const when = s.exportedAt ? ' del ' + fmtDay.format(new Date(s.exportedAt)) : '';
+  if (!confirm(`¿Restaurar la copia${when}? Tiene ${s.cards.length} cartas y ${(s.history || []).length} elecciones en el historial. Sustituirá lo que tienes ahora en la app.`)) return;
+  delete s.app; delete s.exportedAt;
+  const lastBackup = state.lastBackup;
+  localStorage.setItem(KEY, JSON.stringify(s));
+  state = load(); state.lastBackup = state.lastBackup || lastBackup; save();
+  applyLook(); fillSettings(); renderPool(); showIdle(); renderNext();
+  toast('Copia restaurada');
 });
 
 /* =========================================================
@@ -1036,7 +1070,7 @@ function toast(msg) {
   clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2400);
 }
 
-const APP_VERSION = '11 · ajustes plegables';
+const APP_VERSION = '12 · copias en iCloud';
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => reg.update()).catch(() => {});
   // Cuando llega una versión nueva, recarga una vez para mostrarla
