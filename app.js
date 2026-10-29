@@ -334,7 +334,7 @@ btnPick.addEventListener('click', () => {
   if (!card) return toast(state.cards.length ? 'No hay cartas disponibles' : 'Añade cartas a tu colección');
   addHistory(card, Date.now(), 'manual');
   save();
-  spin(card, 'Tu carta');
+  spin(card, 'Your next card is…');
 });
 
 /* =========================================================
@@ -1023,7 +1023,7 @@ function toast(msg) {
   clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2400);
 }
 
-const APP_VERSION = '9 · diseños y no disponibles';
+const APP_VERSION = '10 · your next card';
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => reg.update()).catch(() => {});
   // Cuando llega una versión nueva, recarga una vez para mostrarla
