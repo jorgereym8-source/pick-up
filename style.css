@@ -431,3 +431,100 @@ dialog.sheet h5 { font-size: 12px; text-transform: uppercase; letter-spacing: 1.
 .tdot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 0; border: 1px solid rgba(0,0,0,.15); }
 #cardColorMode button { padding: 9px 2px; font-size: 13px; }
 .fld > select { margin-top: 6px; }
+
+/* ---------- No disponible ---------- */
+.pool li.unavail .mini-card { filter: grayscale(1); opacity: .45; }
+.pool li.unavail .li-name, .pool li.unavail .li-sub { color: var(--muted); opacity: .75; }
+.pool li.unavail { background: var(--line); }
+.na-tag { margin-right: 6px; display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 99px; background: var(--muted); color: var(--bg); vertical-align: 1px; }
+.avail-row { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 2px 0 10px; margin-top: 6px; }
+.avail-row .row { border-top: 0; color: var(--text); font-size: 16px; }
+.avail-row .foot { margin: 0 14px; }
+.avail-row.off { background: var(--line); }
+
+/* ---------- Diseños 6–10 ---------- */
+/* 6 · Tipos: rayas finas con los colores de los tipos y una rueda de color */
+.pcard.b-types .face.back {
+  background:
+    repeating-linear-gradient(135deg,
+      rgba(67,160,71,.55) 0 calc(var(--cw) * .018), transparent 0 calc(var(--cw) * .06),
+      rgba(229,57,53,.55) 0 calc(var(--cw) * .078), transparent 0 calc(var(--cw) * .12),
+      rgba(245,197,24,.55) 0 calc(var(--cw) * .138), transparent 0 calc(var(--cw) * .18),
+      rgba(30,136,229,.55) 0 calc(var(--cw) * .198), transparent 0 calc(var(--cw) * .24),
+      rgba(142,68,173,.55) 0 calc(var(--cw) * .258), transparent 0 calc(var(--cw) * .30)),
+    linear-gradient(160deg, #23242d, #121318);
+}
+.pcard.b-types .face.back::after {
+  width: 40%; border: 0; border-radius: 50%; transform: translate(-50%, -50%);
+  background:
+    radial-gradient(circle, #121318 0 46%, rgba(255,255,255,.95) 47% 55%, transparent 56%),
+    conic-gradient(#43a047, #f5c518, #e53935, #8e44ad, #1e88e5, #c8952b, #43a047);
+  box-shadow: 0 0 0 calc(var(--cw) * .012) rgba(255,255,255,.9);
+}
+.pcard.b-types .face.back::before {
+  content: ""; left: 50%; top: 50%; width: 9%; aspect-ratio: 1; transform: translate(-50%, -50%) rotate(45deg);
+  background: #fff; border-radius: 2px; z-index: 1;
+}
+
+/* 7 · Elementos: planta, fuego, agua y rayo sobre papel crema */
+.pcard.b-elem .face { border-radius: calc(var(--cw) * .14); }
+.pcard.b-elem .face.back {
+  background:
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2063%2088%27%20preserveAspectRatio%3D%27none%27%3E%20%3Cg%20transform%3D%27translate%2819%2031%29%27%3E%3Ccircle%20r%3D%2710.5%27%20fill%3D%27%2343a047%27%2F%3E%3Cpath%20d%3D%27M0-7C6-5%207%203%200%207C-7%203-6-5%200-7Z%27%20fill%3D%27%23fff%27%2F%3E%3Cpath%20d%3D%27M0-5V6%27%20stroke%3D%27%2343a047%27%20stroke-width%3D%271%27%2F%3E%3C%2Fg%3E%20%3Cg%20transform%3D%27translate%2844%2031%29%27%3E%3Ccircle%20r%3D%2710.5%27%20fill%3D%27%23e53935%27%2F%3E%3Cpath%20d%3D%27M0-8C4-3%206%201%204%205C2%208-2%208-4%205C-6%201-3-1-1-3C-1%200%201%201%201%201C2-2%201-5%200-8Z%27%20fill%3D%27%23fff%27%2F%3E%3C%2Fg%3E%20%3Cg%20transform%3D%27translate%2819%2057%29%27%3E%3Ccircle%20r%3D%2710.5%27%20fill%3D%27%231e88e5%27%2F%3E%3Cpath%20d%3D%27M0-8C3-3%205.5%200%205.5%203A5.5%205.5%200%200%201-5.5%203C-5.5%200-3-3%200-8Z%27%20fill%3D%27%23fff%27%2F%3E%3C%2Fg%3E%20%3Cg%20transform%3D%27translate%2844%2057%29%27%3E%3Ccircle%20r%3D%2710.5%27%20fill%3D%27%23f5b800%27%2F%3E%3Cpath%20d%3D%27M2-8L-5%201H0L-2%208L5-1H0Z%27%20fill%3D%27%23fff%27%2F%3E%3C%2Fg%3E%20%3C%2Fsvg%3E") center / 100% 100% no-repeat,
+    radial-gradient(circle, rgba(0,0,0,.06) 0 calc(var(--cw) * .006), transparent calc(var(--cw) * .009)) 0 0 / calc(var(--cw) * .06) calc(var(--cw) * .06),
+    #f4efe4;
+  border: calc(var(--cw) * .026) solid #2b2a33;
+}
+.pcard.b-elem .face.back::after { width: 78%; height: 66%; aspect-ratio: auto; transform: translate(-50%, -50%); border: 1.5px solid rgba(43,42,51,.25); border-radius: calc(var(--cw) * .1); }
+
+/* 8 · Neón: negro con trazos luminosos */
+.pcard.b-neon .face { border-radius: calc(var(--cw) * .09); }
+.pcard.b-neon .face.back {
+  background:
+    linear-gradient(rgba(43,210,255,.07) 1px, transparent 1px) 0 0 / 100% calc(var(--cw) * .07),
+    radial-gradient(circle at 50% 50%, #1a1033, #07060d 75%);
+  border: calc(var(--cw) * .012) solid #07060d;
+}
+.pcard.b-neon .face.back::before {
+  content: ""; inset: 8%; border-radius: calc(var(--cw) * .06);
+  border: 2px solid #ff3cac; box-shadow: 0 0 8px #ff3cac, inset 0 0 8px #ff3cac;
+}
+.pcard.b-neon .face.back::after {
+  width: 28%; border: 2px solid #2bd2ff; border-radius: 3px;
+  box-shadow: 0 0 10px #2bd2ff, inset 0 0 10px #2bd2ff;
+}
+
+/* 9 · Vintage: papel kraft, doble marco y medallón */
+.pcard.b-vint .face { border-radius: calc(var(--cw) * .035); }
+.pcard.b-vint .face.back {
+  background:
+    radial-gradient(circle at 50% 50%, transparent 0 18%, rgba(90,61,30,.9) 18.5% 19.5%, transparent 20%),
+    repeating-conic-gradient(from 0deg at 50% 50%, rgba(90,61,30,.18) 0 5deg, transparent 5deg 15deg),
+    radial-gradient(circle at 30% 20%, #e0c38f, #c19a5b 70%, #a77f43);
+  border: calc(var(--cw) * .026) solid #f3e7cf;
+}
+.pcard.b-vint .face.back::before { content: ""; inset: 6%; border: 3px double #5a3d1e; border-radius: 2px; }
+.pcard.b-vint .face.back::after {
+  width: 20%; border: 0; border-radius: 50%; transform: translate(-50%, -50%);
+  background: radial-gradient(circle, #f3e7cf 0 30%, #5a3d1e 32% 40%, #f3e7cf 42%);
+}
+
+/* 10 · Retro: atardecer ochentero con sol a rayas y suelo de rejilla */
+.pcard.b-retro .face { border-radius: calc(var(--cw) * .1); }
+.pcard.b-retro .face.back {
+  background: linear-gradient(#1d0b3a, #5b1a73 40%, #d63c8a 62%, #ff9a5a 64%, #1d0b3a 64.5%);
+  border: calc(var(--cw) * .026) solid #fff6e8;
+}
+.pcard.b-retro .face.back::after {
+  width: 52%; top: 44%; border: 0; border-radius: 50%; transform: translate(-50%, -50%);
+  background: linear-gradient(#ffe066, #ff7b54 70%, #ff3c8e);
+  -webkit-mask: linear-gradient(#000 52%, transparent 52% 58%, #000 58% 66%, transparent 66% 71%, #000 71% 78%, transparent 78% 82%, #000 82% 88%, transparent 88%);
+          mask: linear-gradient(#000 52%, transparent 52% 58%, #000 58% 66%, transparent 66% 71%, #000 71% 78%, transparent 78% 82%, #000 82% 88%, transparent 88%);
+}
+.pcard.b-retro .face.back::before {
+  content: ""; left: 0; right: 0; bottom: 0; height: 36%;
+  background:
+    linear-gradient(transparent 0 calc(100% - 1.5px), rgba(255,92,190,.85) 0) 0 0 / 100% 22%,
+    repeating-linear-gradient(90deg, transparent 0 calc(var(--cw) * .1 - 1.5px), rgba(255,92,190,.85) 0 calc(var(--cw) * .1));
+  transform: perspective(calc(var(--cw) * .6)) rotateX(55deg); transform-origin: bottom;
+}

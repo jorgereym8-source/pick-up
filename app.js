@@ -70,6 +70,7 @@ const DEFAULT_SETTINGS = {
   sortDir: 'asc',
   filterSets: [],
   filterTypes: [],
+  filterAvail: 'all',      // all | yes | no
   dexFrom: '',
   dexTo: '',
 };
@@ -138,7 +139,9 @@ function randInt(n) {
   }
   return Math.floor(Math.random() * n);
 }
-function randomCard() { return state.cards.length ? state.cards[randInt(state.cards.length)] : null; }
+// Solo las cartas disponibles entran en el sorteo, todas con la misma probabilidad
+function availableCards() { return state.cards.filter(c => !c.unavailable); }
+function randomCard() { const pool = availableCards(); return pool.length ? pool[randInt(pool.length)] : null; }
 function cardById(id) { return state.cards.find(c => c.id === id) || null; }
 function splitName(name) {
   const m = String(name).match(/^(.*?)\s*\(([^()]*)\)\s*$/);
@@ -266,7 +269,8 @@ function frontHTML(card) {
       ${meta.length ? `<ul class="fmeta">${meta.map(([k, v]) => `<li><span>${esc(k)}</span><b>${esc(v)}</b></li>`).join('')}</ul>` : ''}
     </div></div>`;
 }
-const BACKS = [['classic', 'Clásico'], ['deco', 'Art déco'], ['tarot', 'Tarot'], ['holo', 'Holo'], ['geo', 'Geométrico']];
+const BACKS = [['classic', 'Clásico'], ['deco', 'Art déco'], ['tarot', 'Tarot'], ['holo', 'Holo'], ['geo', 'Geométrico'],
+  ['types', 'Tipos'], ['elem', 'Elementos'], ['neon', 'Neón'], ['vint', 'Vintage'], ['retro', 'Retro']];
 function pcard(card, style) {
   return `<div class="pcard b-${style || state.settings.backStyle}"><div class="inner">${backHTML()}${card ? frontHTML(card) : ''}</div></div>`;
 }
@@ -327,7 +331,7 @@ function spin(card, eyebrow) {
 btnPick.addEventListener('click', () => {
   if (spinning) return;
   const card = randomCard();
-  if (!card) return toast('Añade cartas a tu colección');
+  if (!card) return toast(state.cards.length ? 'No hay cartas disponibles' : 'Añade cartas a tu colección');
   addHistory(card, Date.now(), 'manual');
   save();
   spin(card, 'Tu carta');
@@ -438,7 +442,10 @@ function slotsBetween(from, until, limit = 500) {
   return out;
 }
 function nextSlot() { return slotsBetween(Date.now(), Date.now() + 800 * DAY_MS, 1)[0] || null; }
-function cardForSlot(ts) { return (state.plan[ts] && cardById(state.plan[ts])) || randomCard(); }
+function cardForSlot(ts) {
+  const planned = state.plan[ts] && cardById(state.plan[ts]);
+  return (planned && !planned.unavailable) ? planned : randomCard();
+}
 
 function checkSchedule() {
   const now = Date.now();
@@ -552,6 +559,7 @@ function visibleCards() {
     .filter(c => c.group === groupFilter)
     .filter(c => !s.filterSets.length || s.filterSets.includes(c.set))
     .filter(c => !s.filterTypes.length || cardTypes(c).some(t => s.filterTypes.includes(t)))
+    .filter(c => s.filterAvail === 'all' || (s.filterAvail === 'no') === !!c.unavailable)
     .filter(c => !dexOn || (dexKey(c) >= from && dexKey(c) <= to))
     .filter(c => !q || [c.name, c.set, c.num, c.dex, c.type].join(' ').toLowerCase().includes(q));
   if (s.sortBy !== 'custom' && SORT_FN[s.sortBy]) {
@@ -562,7 +570,7 @@ function visibleCards() {
 }
 function filtersActive() {
   const s = state.settings;
-  return s.sortBy !== 'custom' || s.filterSets.length || s.filterTypes.length || s.dexFrom !== '' || s.dexTo !== '';
+  return s.sortBy !== 'custom' || s.filterSets.length || s.filterTypes.length || s.filterAvail !== 'all' || s.dexFrom !== '' || s.dexTo !== '';
 }
 function renderPool() {
   const s = state.settings;
@@ -572,9 +580,9 @@ function renderPool() {
   const list = visibleCards();
   const custom = s.sortBy === 'custom';
   $('#poolList').innerHTML = list.length ? list.map(c => `
-    <li data-id="${esc(c.id)}">${miniCard(c)}
+    <li data-id="${esc(c.id)}" class="${c.unavailable ? 'unavail' : ''}">${miniCard(c)}
       <div class="li-main"><div class="li-name">${esc(c.name)}</div>
-      <div class="li-sub">${esc([c.set, c.num && 'Nº ' + c.num, c.dex && c.dex !== '-' && '#' + c.dex, cardTypes(c).join('/')].filter(Boolean).join(' · '))}</div></div>
+      <div class="li-sub">${c.unavailable ? '<span class="na-tag">No disponible</span>' : ''}${esc([c.set, c.num && 'Nº ' + c.num, c.dex && c.dex !== '-' && '#' + c.dex, cardTypes(c).join('/')].filter(Boolean).join(' · '))}</div></div>
       ${custom ? '<span class="grip" aria-hidden="true">⋮⋮</span>' : ''}</li>`).join('')
     : '<li class="empty-row">Sin cartas</li>';
   const info = [];
@@ -582,8 +590,11 @@ function renderPool() {
     : 'Por ' + SORTS.find(x => x[0] === s.sortBy)[1].toLowerCase() + (s.sortDir === 'desc' ? ' ↓' : ' ↑'));
   if (s.filterSets.length) info.push(s.filterSets.length === 1 ? s.filterSets[0] : `${s.filterSets.length} expansiones`);
   if (s.filterTypes.length) info.push(s.filterTypes.join(', '));
+  if (s.filterAvail !== 'all') info.push(s.filterAvail === 'yes' ? 'disponibles' : 'no disponibles');
   if (s.dexFrom !== '' || s.dexTo !== '') info.push(`Pokédex ${s.dexFrom || '…'}–${s.dexTo || '…'}`);
-  if (s.filterSets.length || s.filterTypes.length || s.dexFrom !== '' || s.dexTo !== '' || $('#search').value.trim()) info.push(`${list.length} cartas`);
+  const na = state.cards.filter(c => c.group === groupFilter && c.unavailable).length;
+  if (na && s.filterAvail === 'all') info.push(`${na} no ${na === 1 ? 'disponible' : 'disponibles'}`);
+  if (s.filterSets.length || s.filterTypes.length || s.filterAvail !== 'all' || s.dexFrom !== '' || s.dexTo !== '' || $('#search').value.trim()) info.push(`${list.length} cartas`);
   $('#collInfo').textContent = info.join(' · ');
   $('#sortDot').hidden = !filtersActive();
   $('#setList').innerHTML = [...new Set(state.cards.map(c => c.set).filter(Boolean))].map(x => `<option value="${esc(x)}">`).join('');
@@ -611,6 +622,7 @@ function renderSortDialog() {
     .sort((a, b) => typeOrder({ type: a }) - typeOrder({ type: b }));
   $('#typeChips').innerHTML = `<button type="button" data-type="" class="${s.filterTypes.length ? '' : 'on'}">Todos</button>` +
     types.map(t => `<button type="button" data-type="${esc(t)}" class="${s.filterTypes.includes(t) ? 'on' : ''}"><i class="tdot" style="background:${state.look.typeColors[t] || '#999'}"></i>${esc(t)}</button>`).join('');
+  $$('#availFilter button').forEach(b => b.classList.toggle('on', b.dataset.a === s.filterAvail));
   $('#dexFrom').value = s.dexFrom;
   $('#dexTo').value = s.dexTo;
 }
@@ -618,11 +630,12 @@ function sortChanged() { save(); renderSortDialog(); renderPool(); }
 $('#btnSort').addEventListener('click', () => { renderSortDialog(); dlgSort.showModal(); });
 $('#btnSortDone').addEventListener('click', () => dlgSort.close());
 $('#btnSortReset').addEventListener('click', () => {
-  Object.assign(state.settings, { sortBy: 'custom', sortDir: 'asc', filterSets: [], filterTypes: [], dexFrom: '', dexTo: '' });
+  Object.assign(state.settings, { sortBy: 'custom', sortDir: 'asc', filterSets: [], filterTypes: [], filterAvail: 'all', dexFrom: '', dexTo: '' });
   sortChanged();
 });
 $('#sortRows').addEventListener('click', e => { const r = e.target.closest('[data-s]'); if (r) { state.settings.sortBy = r.dataset.s; sortChanged(); } });
 $('#sortDir').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { state.settings.sortDir = b.dataset.d; sortChanged(); } });
+$('#availFilter').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { state.settings.filterAvail = b.dataset.a; sortChanged(); } });
 $('#typeChips').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   const v = b.dataset.type, f = state.settings.filterTypes;
@@ -748,6 +761,8 @@ function openCard(card) {
   formCard.reset();
   $('#cardDlgTitle').textContent = card ? 'Editar carta' : 'Nueva carta';
   $('#btnDeleteCard').hidden = !card;
+  $('#cardAvail').checked = !(card && card.unavailable);
+  syncAvailNote();
   if (card) for (const k of ['name', 'num', 'dex', 'set', 'date']) formCard.elements[k].value = card[k] || '';
   else formCard.elements.date.value = isoDate(new Date());
   const ts = card ? cardTypes(card) : [];
@@ -758,6 +773,12 @@ function openCard(card) {
   setFormGroup(card ? card.group : groupFilter);
   dlgCard.showModal();
 }
+function syncAvailNote() {
+  const on = $('#cardAvail').checked;
+  $('#availNote').textContent = on ? 'Puede salir al elegir una carta.' : 'Sigue en tu colección, pero no saldrá al elegir ni en los picks programados.';
+  $('#availRow').classList.toggle('off', !on);
+}
+$('#cardAvail').addEventListener('change', syncAvailNote);
 $('#btnAdd').addEventListener('click', () => openCard(null));
 $('#btnCancelCard').addEventListener('click', () => dlgCard.close());
 $('#cardGroup').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setFormGroup(b.dataset.g); });
@@ -776,7 +797,8 @@ formCard.addEventListener('submit', e => {
   let dex = f.dex.value.trim();
   if (/^\d+$/.test(dex)) dex = dex.padStart(4, '0');
   const data = { name, group: formGroup, num: f.num.value.trim(), set: f.set.value.trim(), dex, date: f.date.value,
-    type: formType(), colorMode: formColorMode, color: formColorMode === 'custom' ? $('#cardColor').value : '' };
+    type: formType(), colorMode: formColorMode, color: formColorMode === 'custom' ? $('#cardColor').value : '',
+    unavailable: !$('#cardAvail').checked };
   if (editingId) {
     Object.assign(cardById(editingId), data);
     toast('Carta actualizada');
@@ -1001,7 +1023,7 @@ function toast(msg) {
   clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2400);
 }
 
-const APP_VERSION = '8 · icono centrado';
+const APP_VERSION = '9 · diseños y no disponibles';
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => reg.update()).catch(() => {});
   // Cuando llega una versión nueva, recarga una vez para mostrarla

@@ -7,14 +7,14 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Pick up">
-<link rel="manifest" href="manifest.json?v=8">
-<link rel="apple-touch-icon" href="icon-180.png?v=8">
-<link rel="icon" href="icon-192.png?v=8">
+<link rel="manifest" href="manifest.json?v=9">
+<link rel="apple-touch-icon" href="icon-180.png?v=9">
+<link rel="icon" href="icon-192.png?v=9">
 <title>Pick up</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=Montserrat:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;1,500;1,600&display=swap">
-<link rel="stylesheet" href="style.css?v=8">
+<link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
 <div class="bg-layer" aria-hidden="true"></div>
@@ -195,6 +195,10 @@
       <h3 id="cardDlgTitle">Nueva carta</h3>
       <button type="submit" class="link strong">Guardar</button>
     </div>
+    <div class="avail-row" id="availRow">
+      <label class="row">Disponible para el sorteo <input type="checkbox" id="cardAvail" class="switch" checked></label>
+      <p class="foot" id="availNote"></p>
+    </div>
     <label class="fld">Nombre y código<input name="name" placeholder="Starly (SVI 221)"></label>
     <div class="fld">Grupo
       <div class="seg" id="cardGroup">
@@ -245,6 +249,12 @@
   <p class="foot">En «Mi orden» mantén pulsada una carta y arrástrala para colocarla donde quieras.</p>
   <h5>Expansión</h5>
   <div class="chips" id="setChips"></div>
+  <h5>Disponibilidad</h5>
+  <div class="seg" id="availFilter">
+    <button type="button" data-a="all">Todas</button>
+    <button type="button" data-a="yes">Disponibles</button>
+    <button type="button" data-a="no">No disponibles</button>
+  </div>
   <h5>Tipo</h5>
   <div class="chips" id="typeChips"></div>
   <h5>Nº Pokédex</h5>
@@ -281,7 +291,7 @@
 
 <div class="toast" id="toast" role="status"></div>
 
-<script src="cards.js?v=8"></script>
-<script src="app.js?v=8"></script>
+<script src="cards.js?v=9"></script>
+<script src="app.js?v=9"></script>
 </body>
 </html>
