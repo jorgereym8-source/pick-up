@@ -899,13 +899,14 @@ function renderBacks() {
 $('#backRows').addEventListener('click', e => {
   const b = e.target.closest('[data-b]'); if (!b) return;
   state.settings.backStyle = b.dataset.b;
-  save(); renderBacks();
+  save(); renderBacks(); renderSummaries();
   if (!spinning) showIdle();
 });
 function fmtSecs(v) { return String(v).replace('.', ',') + ' s'; }
 $('#spinSecs').addEventListener('input', e => {
   state.settings.spinSecs = +e.target.value;
   $('#spinVal').textContent = fmtSecs(e.target.value);
+  renderSummaries();
 });
 $('#spinSecs').addEventListener('change', save);
 $('#calWeeks').addEventListener('change', e => { state.settings.calWeeks = +e.target.value; save(); });
@@ -913,8 +914,20 @@ $('#btnCalendar').addEventListener('click', exportCalendar);
 $$('[data-show]').forEach(cb => cb.addEventListener('change', () => { state.settings.show[cb.dataset.show] = cb.checked; save(); }));
 
 /* ----- Apariencia ----- */
+function renderSummaries() {
+  const lk = state.look, st = state.settings;
+  const back = (BACKS.find(b => b[0] === st.backStyle) || BACKS[0])[1];
+  $('#sumCards').textContent = `${back} · ${fmtSecs(st.spinSecs)}`;
+  $('#sumCardColor').textContent = st.colorBy === 'type' ? 'Por tipo' : 'Por grupo';
+  const pn = lk.preset === 'auto' ? 'Automático' : lk.preset === 'custom' ? 'Personal' : (PRESETS[lk.preset] || {}).name || '';
+  $('#sumTheme').textContent = `${pn} · ${lk.bgStyle === 'gradient' ? 'degradado' : 'liso'}`;
+  $('#sumAlpha').textContent = ALPHA_FIELDS.every(([k]) => !lk.transp[k]) ? 'Opaco' : ALPHA_FIELDS.map(([k]) => lk.transp[k] + '%').join(' · ');
+  const fname = k => (FONTS[k] || FONTS.system).name.replace(' (sistema)', '');
+  $('#sumFonts').textContent = `${fname(lk.fontTitle)} · ${fname(lk.fontBody)}`;
+}
 function renderLookSettings() {
   const lk = state.look, cur = currentColors();
+  renderSummaries();
   const presetKeys = ['auto', ...Object.keys(PRESETS), 'custom'];
   $('#presets').innerHTML = presetKeys.map(k => {
     const p = k === 'auto' ? PRESETS.claro : k === 'custom' ? lk.colors : PRESETS[k];
@@ -974,14 +987,14 @@ $('#alphaRows').addEventListener('input', e => {
   const k = e.target.dataset.a; if (!k) return;
   state.look.transp[k] = +e.target.value;
   $('#tv-' + k).textContent = e.target.value + ' %';
-  applyLook();
+  applyLook(); renderSummaries();
 });
 $('#alphaRows').addEventListener('change', save);
 $('#bgStyle').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   state.look.bgStyle = b.dataset.v;
   $$('#bgStyle button').forEach(x => x.classList.toggle('on', x === b));
-  lookChanged();
+  lookChanged(); renderSummaries();
 });
 document.addEventListener('click', e => {
   const r = e.target.closest('.font-opt'); if (!r) return;
@@ -1023,7 +1036,7 @@ function toast(msg) {
   clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2400);
 }
 
-const APP_VERSION = '10 · your next card';
+const APP_VERSION = '11 · ajustes plegables';
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => reg.update()).catch(() => {});
   // Cuando llega una versión nueva, recarga una vez para mostrarla

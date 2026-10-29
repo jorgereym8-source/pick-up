@@ -528,3 +528,28 @@ dialog.sheet h5 { font-size: 12px; text-transform: uppercase; letter-spacing: 1.
     repeating-linear-gradient(90deg, transparent 0 calc(var(--cw) * .1 - 1.5px), rgba(255,92,190,.85) 0 calc(var(--cw) * .1));
   transform: perspective(calc(var(--cw) * .6)) rotateX(55deg); transform-origin: bottom;
 }
+
+/* ---------- Desplegables de Ajustes ---------- */
+.acc { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+.acc details + details { border-top: 1px solid var(--line); }
+.acc summary {
+  list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px;
+  padding: 14px; min-height: 52px; font-weight: 500;
+}
+.acc summary::-webkit-details-marker { display: none; }
+.acc summary span { flex: 1; }
+.acc summary em { font-style: normal; color: var(--muted); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 48%; }
+.acc summary::after {
+  content: ""; width: 8px; height: 8px; flex: none; margin-left: 2px;
+  border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted);
+  transform: rotate(45deg) translateY(-2px); transition: transform .2s;
+}
+.acc details[open] > summary::after { transform: rotate(-135deg) translateY(-2px); }
+.acc details[open] > summary { border-bottom: 1px solid var(--line); }
+.acc-body { padding: 12px 12px 16px; background: var(--bg); animation: fade .2s ease; }
+.acc-body > .group:first-child, .acc-body > .presets:first-child, .acc-body > .backs:first-child { margin-top: 0; }
+.acc-body h5.sub:first-child { margin-top: 0; }
+.acc-body .backs { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.acc-body .back-opt { padding: 10px 2px 8px; min-width: 0; font-size: 11px; }
+.acc-body .back-opt span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acc-body .back-opt .pcard { --cw: min(11.5vw, 54px); }

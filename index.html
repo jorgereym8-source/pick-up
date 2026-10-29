@@ -7,14 +7,14 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Pick up">
-<link rel="manifest" href="manifest.json?v=10">
-<link rel="apple-touch-icon" href="icon-180.png?v=10">
-<link rel="icon" href="icon-192.png?v=10">
+<link rel="manifest" href="manifest.json?v=11">
+<link rel="apple-touch-icon" href="icon-180.png?v=11">
+<link rel="icon" href="icon-192.png?v=11">
 <title>Pick up</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=Montserrat:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;1,500;1,600&display=swap">
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
 <div class="bg-layer" aria-hidden="true"></div>
@@ -98,17 +98,6 @@
   <p class="foot" id="notifNote"></p>
   <p class="foot">El Calendario recibe las próximas elecciones con la carta ya escogida, así el aviso salta aunque la app esté cerrada, y la app muestra la misma carta a esa hora.</p>
 
-  <h4>Diseño de las cartas</h4>
-  <div class="backs" id="backRows"></div>
-  <p class="foot">El diseño «Clásico» usa el color «Reverso de las cartas» de Colores.</p>
-
-  <h4>Animación</h4>
-  <div class="group">
-    <label class="row range-row">Duración al elegir<span class="val" id="spinVal"></span>
-      <input type="range" id="spinSecs" min="1" max="10" step="0.5"></label>
-  </div>
-  <p class="foot">Tiempo que tardan las cartas en rodar hasta pararse (de 1 a 10 segundos).</p>
-
   <h4>Al escoger una carta, mostrar</h4>
   <div class="group">
     <label class="row check"><input type="checkbox" data-show="num"> Nº</label>
@@ -118,47 +107,80 @@
   </div>
   <p class="foot">El nombre con su código y el grupo (Illustration Rare / Other) salen siempre.</p>
 
-  <h4>Tema</h4>
-  <div class="presets" id="presets"></div>
-
-  <h4>Color de las cartas</h4>
-  <div class="group">
-    <label class="row">Colorear todas según
-      <div class="seg mini" id="colorBy">
-        <button type="button" data-v="group">Grupo</button>
-        <button type="button" data-v="type">Tipo</button>
+  <h4>Personalización</h4>
+  <div class="acc">
+    <details data-sec="cards">
+      <summary><span>Diseño de las cartas</span><em id="sumCards"></em></summary>
+      <div class="acc-body">
+        <div class="backs" id="backRows"></div>
+        <p class="foot">El diseño «Clásico» usa el color «Reverso de las cartas» de Tema y colores.</p>
+        <h5 class="sub">Animación</h5>
+        <div class="group">
+          <label class="row range-row">Duración al elegir<span class="val" id="spinVal"></span>
+            <input type="range" id="spinSecs" min="1" max="10" step="0.5"></label>
+        </div>
+        <p class="foot">Tiempo que tardan las cartas en rodar hasta pararse (de 1 a 10 segundos).</p>
       </div>
-    </label>
-  </div>
-  <p class="foot">Cada carta puede seguir esto o tener su propio modo (grupo, tipo o personalizado) desde Colección. Las cartas de dos tipos mezclan ambos colores en degradado.</p>
-  <h5 class="sub">Grupos</h5>
-  <div class="group" id="groupColorGroup">
-    <label class="row">Illustration Rare <input type="color" class="color-in" id="colIR"></label>
-    <label class="row">Other <input type="color" class="color-in" id="colOT"></label>
-  </div>
-  <p class="foot">Los colores de los grupos se usan también en la etiqueta Illustration Rare / Other.</p>
-  <h5 class="sub">Tipos</h5>
-  <div class="group" id="typeColorRows"></div>
+    </details>
 
-  <h4>Colores</h4>
-  <div class="group" id="colorRows"></div>
-  <div class="group">
-    <label class="row">Fondo
-      <div class="seg mini" id="bgStyle">
-        <button type="button" data-v="solid">Liso</button>
-        <button type="button" data-v="gradient">Degradado</button>
+    <details data-sec="cardcolor">
+      <summary><span>Color de las cartas</span><em id="sumCardColor"></em></summary>
+      <div class="acc-body">
+        <div class="group">
+          <label class="row">Colorear todas según
+            <div class="seg mini" id="colorBy">
+              <button type="button" data-v="group">Grupo</button>
+              <button type="button" data-v="type">Tipo</button>
+            </div>
+          </label>
+        </div>
+        <p class="foot">Cada carta puede seguir esto o tener su propio modo (grupo, tipo o personalizado) desde Colección. Las cartas de dos tipos mezclan ambos colores en degradado.</p>
+        <h5 class="sub">Grupos</h5>
+        <div class="group" id="groupColorGroup">
+          <label class="row">Illustration Rare <input type="color" class="color-in" id="colIR"></label>
+          <label class="row">Other <input type="color" class="color-in" id="colOT"></label>
+        </div>
+        <p class="foot">Los colores de los grupos se usan también en la etiqueta Illustration Rare / Other.</p>
+        <h5 class="sub">Tipos</h5>
+        <div class="group" id="typeColorRows"></div>
       </div>
-    </label>
+    </details>
+
+    <details data-sec="theme">
+      <summary><span>Tema y colores</span><em id="sumTheme"></em></summary>
+      <div class="acc-body">
+        <div class="presets" id="presets"></div>
+        <h5 class="sub">Colores</h5>
+        <div class="group" id="colorRows"></div>
+        <div class="group">
+          <label class="row">Fondo
+            <div class="seg mini" id="bgStyle">
+              <button type="button" data-v="solid">Liso</button>
+              <button type="button" data-v="gradient">Degradado</button>
+            </div>
+          </label>
+        </div>
+      </div>
+    </details>
+
+    <details data-sec="alpha">
+      <summary><span>Translucidez</span><em id="sumAlpha"></em></summary>
+      <div class="acc-body">
+        <div class="group" id="alphaRows"></div>
+        <p class="foot">0 % = opaco. Se aprecia más con el fondo degradado.</p>
+      </div>
+    </details>
+
+    <details data-sec="fonts">
+      <summary><span>Tipos de letra</span><em id="sumFonts"></em></summary>
+      <div class="acc-body">
+        <h5 class="sub">Títulos y botón</h5>
+        <div class="group" id="fontTitleRows"></div>
+        <h5 class="sub">Texto</h5>
+        <div class="group" id="fontBodyRows"></div>
+      </div>
+    </details>
   </div>
-
-  <h4>Translucidez</h4>
-  <div class="group" id="alphaRows"></div>
-  <p class="foot">0 % = opaco. Se aprecia más con el fondo degradado.</p>
-
-  <h4>Tipo de letra · títulos y botón</h4>
-  <div class="group" id="fontTitleRows"></div>
-  <h4>Tipo de letra · texto</h4>
-  <div class="group" id="fontBodyRows"></div>
   <button type="button" class="ghost full" id="btnResetLook">Restablecer apariencia</button>
 
   <h4>Datos</h4>
@@ -291,7 +313,7 @@
 
 <div class="toast" id="toast" role="status"></div>
 
-<script src="cards.js?v=10"></script>
-<script src="app.js?v=10"></script>
+<script src="cards.js?v=11"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>
