@@ -424,3 +424,10 @@ dialog.sheet h5 { font-size: 12px; text-transform: uppercase; letter-spacing: 1.
 .back-opt .pcard { --cw: min(13vw, 58px); --ch: calc(var(--cw) * 88 / 63); }
 .back-opt .face { box-shadow: 0 3px 8px rgba(0,0,0,.18); }
 .pcard.b-geo .face { box-shadow: none; }
+
+/* ---------- Tipos ---------- */
+#scrSettings h5.sub { font-size: 12px; color: var(--muted); font-weight: 600; margin: 14px 4px 6px; }
+.group.dim { opacity: .5; }
+.tdot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 0; border: 1px solid rgba(0,0,0,.15); }
+#cardColorMode button { padding: 9px 2px; font-size: 13px; }
+.fld > select { margin-top: 6px; }

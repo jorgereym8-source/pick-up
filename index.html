@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=Montserrat:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;1,500;1,600&display=swap">
-<link rel="stylesheet" href="style.css?v=5">
+<link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
 <div class="bg-layer" aria-hidden="true"></div>
@@ -114,18 +114,31 @@
     <label class="row check"><input type="checkbox" data-show="num"> Nº</label>
     <label class="row check"><input type="checkbox" data-show="set"> Expansión</label>
     <label class="row check"><input type="checkbox" data-show="dex"> Nº Pokédex</label>
+    <label class="row check"><input type="checkbox" data-show="type"> Tipo</label>
   </div>
   <p class="foot">El nombre con su código y el grupo (Illustration Rare / Other) salen siempre.</p>
 
   <h4>Tema</h4>
   <div class="presets" id="presets"></div>
 
-  <h4>Colores de los grupos</h4>
+  <h4>Color de las cartas</h4>
   <div class="group">
+    <label class="row">Colorear todas según
+      <div class="seg mini" id="colorBy">
+        <button type="button" data-v="group">Grupo</button>
+        <button type="button" data-v="type">Tipo</button>
+      </div>
+    </label>
+  </div>
+  <p class="foot">Cada carta puede seguir esto o tener su propio modo (grupo, tipo o personalizado) desde Colección. Las cartas de dos tipos mezclan ambos colores en degradado.</p>
+  <h5 class="sub">Grupos</h5>
+  <div class="group" id="groupColorGroup">
     <label class="row">Illustration Rare <input type="color" class="color-in" id="colIR"></label>
     <label class="row">Other <input type="color" class="color-in" id="colOT"></label>
   </div>
-  <p class="foot">Se usan en la etiqueta, la banda de la carta y la colección. Cada carta puede tener además su propio color.</p>
+  <p class="foot">Los colores de los grupos se usan también en la etiqueta Illustration Rare / Other.</p>
+  <h5 class="sub">Tipos</h5>
+  <div class="group" id="typeColorRows"></div>
 
   <h4>Colores</h4>
   <div class="group" id="colorRows"></div>
@@ -194,13 +207,19 @@
       <label class="fld">Nº Pokédex<input name="dex" inputmode="numeric" placeholder="0396"></label>
     </div>
     <label class="fld">Expansión<input name="set" list="setList" placeholder="Scarlet &amp; Violet"></label>
+    <div class="two">
+      <label class="fld">Tipo<select id="cardType1"></select></label>
+      <label class="fld">Segundo tipo<select id="cardType2"></select></label>
+    </div>
     <datalist id="setList"></datalist>
     <label class="fld">Fecha de salida<input name="date" type="date"></label>
     <div class="fld">Color de la carta
       <div class="color-pick">
         <div class="seg" id="cardColorMode">
-          <button type="button" data-m="group" class="on">Del grupo</button>
-          <button type="button" data-m="custom">Personalizado</button>
+          <button type="button" data-m="auto" class="on">Ajustes</button>
+          <button type="button" data-m="group">Grupo</button>
+          <button type="button" data-m="type">Tipo</button>
+          <button type="button" data-m="custom">Propio</button>
         </div>
         <input type="color" class="color-in big" id="cardColor" value="#c9952e">
       </div>
@@ -226,6 +245,8 @@
   <p class="foot">En «Mi orden» mantén pulsada una carta y arrástrala para colocarla donde quieras.</p>
   <h5>Expansión</h5>
   <div class="chips" id="setChips"></div>
+  <h5>Tipo</h5>
+  <div class="chips" id="typeChips"></div>
   <h5>Nº Pokédex</h5>
   <div class="two">
     <label class="fld">Desde<input type="number" id="dexFrom" min="0" inputmode="numeric" placeholder="1"></label>
@@ -260,7 +281,7 @@
 
 <div class="toast" id="toast" role="status"></div>
 
-<script src="cards.js?v=5"></script>
-<script src="app.js?v=5"></script>
+<script src="cards.js?v=6"></script>
+<script src="app.js?v=6"></script>
 </body>
 </html>

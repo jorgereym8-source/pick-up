@@ -29,12 +29,26 @@ const COLOR_FIELDS = [
 ];
 const ALPHA_FIELDS = [['btn', 'Botones'], ['panel', 'Menús y listas'], ['bar', 'Barra inferior']];
 
+const TYPES = [
+  ['Planta', '#43a047'], ['Fuego', '#e53935'], ['Eléctrico', '#f5c518'], ['Agua', '#1e88e5'],
+  ['Normal', '#cfcfc8'], ['Lucha', '#8d5a3b'], ['Dragón', '#c8952b'], ['Psíquico', '#8e44ad'],
+  ['Acero', '#a7b1bc'], ['Siniestro', '#1f2f56'], ['Entrenador', '#161616'],
+];
+const DEFAULT_TYPE_COLORS = Object.fromEntries(TYPES);
+const typeKey = t => String(t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+const TYPE_BY_KEY = Object.fromEntries(TYPES.map(([t]) => [typeKey(t), t]));
+// "Planta / Fuego" -> ['Planta', 'Fuego']
+function cardTypes(card) {
+  return String(card.type || '').split('/').map(x => TYPE_BY_KEY[typeKey(x)] || x.trim()).filter(Boolean);
+}
+
 const DEFAULT_LOOK = {
   preset: 'auto',                 // auto | claves de PRESETS | custom
   colors: Object.assign({}, PRESETS.claro),
   transp: { btn: 0, panel: 0, bar: 25 },   // % de transparencia
   bgStyle: 'solid',
   groupColors: { IR: '#c9952e', OT: '#5e86b8' },
+  typeColors: {},   // se rellena con DEFAULT_TYPE_COLORS
   fontTitle: 'cormorant',
   fontBody: 'system',
 };
@@ -47,13 +61,15 @@ const DEFAULT_SETTINGS = {
   monthDay: 1,
   times: ['20:00'],
   notifOn: false,
-  show: { num: true, set: true, dex: true },
+  show: { num: true, set: true, dex: true, type: true },
+  colorBy: 'group',        // group | type: color de todas las cartas
   calWeeks: 8,
   spinSecs: 4,
   backStyle: 'classic',   // classic | deco | tarot | holo | geo
   sortBy: 'custom',        // custom | set | name | num | dex | date
   sortDir: 'asc',
   filterSets: [],
+  filterTypes: [],
   dexFrom: '',
   dexTo: '',
 };
@@ -74,11 +90,25 @@ function load() {
   s.look.colors = Object.assign({}, DEFAULT_LOOK.colors, lk.colors || {});
   s.look.transp = Object.assign({}, DEFAULT_LOOK.transp, lk.transp || {});
   s.look.groupColors = Object.assign({}, DEFAULT_LOOK.groupColors, lk.groupColors || {});
+  s.look.typeColors = Object.assign({}, DEFAULT_TYPE_COLORS, lk.typeColors || {});
+  // color por carta: auto (según Ajustes) | group | type | custom
+  s.cards.forEach(c => { if (!c.colorMode) c.colorMode = c.color ? 'custom' : 'auto'; });
   s.history.forEach((h, i) => { if (!h.hid) h.hid = 'h' + h.at + '-' + i; });
-  // Añade las cartas del pool inicial que falten (salvo las que quitaste)
-  const have = new Set(s.cards.map(c => c.id));
   const removed = new Set(s.removed);
-  for (const c of SEED_CARDS) if (!have.has(c.id) && !removed.has(c.id)) s.cards.push(c);
+  // Fichero base nuevo: actualiza los datos de cada carta (conserva tu orden y tus colores)
+  if ((s.seedVersion || 1) < SEED_VERSION) {
+    const seedById = new Map(SEED_CARDS.map(c => [c.id, c]));
+    const seedNames = new Set(SEED_CARDS.map(c => c.name.toLowerCase()));
+    s.cards = s.cards.filter(c => !(c.id.startsWith('u') && seedNames.has(c.name.toLowerCase())));
+    s.cards.forEach(c => {
+      const sc = seedById.get(c.id);
+      if (sc) for (const k of ['name', 'num', 'date', 'set', 'dex', 'type', 'group']) c[k] = sc[k];
+    });
+  }
+  s.seedVersion = SEED_VERSION;
+  // Añade las cartas del fichero base que falten (salvo las que quitaste)
+  const have = new Set(s.cards.map(c => c.id));
+  for (const c of SEED_CARDS) if (!have.has(c.id) && !removed.has(c.id)) s.cards.push(Object.assign({ colorMode: 'auto' }, c));
   return s;
 }
 function save() {
@@ -118,6 +148,7 @@ function details(card) {
   const sh = state.settings.show, out = [];
   if (sh.num && card.num) out.push(['Nº', card.num]);
   if (sh.set && card.set) out.push(['Expansión', card.set]);
+  if (sh.type && card.type) out.push(['Tipo', cardTypes(card).join(' / ')]);
   if (sh.dex && card.dex) out.push(['Pokédex', card.dex === '-' ? '—' : '#' + card.dex]);
   return out;
 }
@@ -143,9 +174,25 @@ function shade(hex, amt) {   // amt > 0 aclara, < 0 oscurece
   return '#' + [f(r), f(g), f(b)].map(v => v.toString(16).padStart(2, '0')).join('');
 }
 
-function cardColor(card) { return card.color || state.look.groupColors[card.group] || '#999999'; }
+// Colores de una carta según su modo (o el de Ajustes si está en automático)
+function cardColors(card, mode) {
+  mode = mode || (card.colorMode && card.colorMode !== 'auto' ? card.colorMode : state.settings.colorBy);
+  const groupC = state.look.groupColors[card.group] || '#999999';
+  if (mode === 'custom' && card.color) return [card.color];
+  if (mode === 'type') {
+    const cs = cardTypes(card).map(t => state.look.typeColors[t]).filter(Boolean).slice(0, 2);
+    if (cs.length) return cs;
+  }
+  return [groupC];
+}
 function cardGrad(color) { return `linear-gradient(135deg, ${shade(color, .5)}, ${color} 55%, ${shade(color, -.28)})`; }
-function miniCard(card) { return `<span class="mini-card" style="background:${cardGrad(cardColor(card))}"></span>`; }
+function paint(colors) {
+  if (colors.length < 2) return cardGrad(colors[0]);
+  const [a, b] = colors;   // dos tipos: se degradan ambos colores
+  return `linear-gradient(135deg, ${shade(a, .35)}, ${a} 30%, ${b} 70%, ${shade(b, -.22)})`;
+}
+function cardPaint(card, mode) { return paint(cardColors(card, mode)); }
+function miniCard(card) { return `<span class="mini-card" style="background:${cardPaint(card)}"></span>`; }
 
 /* =========================================================
    Apariencia
@@ -211,7 +258,7 @@ function frontHTML(card) {
   const meta = details(card).filter(([k]) => k !== 'Pokédex');
   const dex = state.settings.show.dex && card.dex && card.dex !== '-' ? '#' + card.dex : '';
   return `<div class="face front">
-    <div class="band" style="background:${cardGrad(cardColor(card))}">${dex ? `<span class="dex">${esc(dex)}</span>` : ''}</div>
+    <div class="band" style="background:${cardPaint(card)}">${dex ? `<span class="dex">${esc(dex)}</span>` : ''}</div>
     <div class="fbody">
       <p class="fname">${esc(n)}</p>
       ${code ? `<p class="fcode">${esc(code)}</p>` : ''}
@@ -482,7 +529,8 @@ async function exportCalendar() {
 /* =========================================================
    Colección
    ========================================================= */
-const SORTS = [['custom', 'Mi orden'], ['set', 'Expansión'], ['name', 'Nombre'], ['num', 'Nº de carta'], ['dex', 'Nº Pokédex'], ['date', 'Fecha de salida']];
+const SORTS = [['custom', 'Mi orden'], ['set', 'Expansión'], ['name', 'Nombre'], ['num', 'Nº de carta'], ['dex', 'Nº Pokédex'], ['type', 'Tipo'], ['date', 'Fecha de salida']];
+const typeOrder = c => { const t = cardTypes(c)[0]; const i = TYPES.findIndex(x => x[0] === t); return i < 0 ? 99 : i; };
 const coll = new Intl.Collator('es', { numeric: true, sensitivity: 'base' });
 function numKey(c) { const m = String(c.num || '').match(/\d+/); return m ? +m[0] : Infinity; }
 function dexKey(c) { const n = parseInt(c.dex, 10); return isNaN(n) ? Infinity : n; }
@@ -491,6 +539,7 @@ const SORT_FN = {
   name: (a, b) => coll.compare(a.name, b.name),
   num:  (a, b) => numKey(a) - numKey(b) || coll.compare(a.set || '', b.set || ''),
   dex:  (a, b) => dexKey(a) - dexKey(b) || coll.compare(a.name, b.name),
+  type: (a, b) => typeOrder(a) - typeOrder(b) || coll.compare(a.type || '', b.type || '') || coll.compare(a.name, b.name),
   date: (a, b) => (a.date || '9999').localeCompare(b.date || '9999') || coll.compare(a.name, b.name),
 };
 
@@ -502,8 +551,9 @@ function visibleCards() {
   let list = state.cards
     .filter(c => c.group === groupFilter)
     .filter(c => !s.filterSets.length || s.filterSets.includes(c.set))
+    .filter(c => !s.filterTypes.length || cardTypes(c).some(t => s.filterTypes.includes(t)))
     .filter(c => !dexOn || (dexKey(c) >= from && dexKey(c) <= to))
-    .filter(c => !q || [c.name, c.set, c.num, c.dex].join(' ').toLowerCase().includes(q));
+    .filter(c => !q || [c.name, c.set, c.num, c.dex, c.type].join(' ').toLowerCase().includes(q));
   if (s.sortBy !== 'custom' && SORT_FN[s.sortBy]) {
     list = list.slice().sort(SORT_FN[s.sortBy]);
     if (s.sortDir === 'desc') list.reverse();
@@ -512,7 +562,7 @@ function visibleCards() {
 }
 function filtersActive() {
   const s = state.settings;
-  return s.sortBy !== 'custom' || s.filterSets.length || s.dexFrom !== '' || s.dexTo !== '';
+  return s.sortBy !== 'custom' || s.filterSets.length || s.filterTypes.length || s.dexFrom !== '' || s.dexTo !== '';
 }
 function renderPool() {
   const s = state.settings;
@@ -524,15 +574,16 @@ function renderPool() {
   $('#poolList').innerHTML = list.length ? list.map(c => `
     <li data-id="${esc(c.id)}">${miniCard(c)}
       <div class="li-main"><div class="li-name">${esc(c.name)}</div>
-      <div class="li-sub">${esc([c.set, c.num && 'Nº ' + c.num, c.dex && c.dex !== '-' && '#' + c.dex].filter(Boolean).join(' · '))}</div></div>
+      <div class="li-sub">${esc([c.set, c.num && 'Nº ' + c.num, c.dex && c.dex !== '-' && '#' + c.dex, cardTypes(c).join('/')].filter(Boolean).join(' · '))}</div></div>
       ${custom ? '<span class="grip" aria-hidden="true">⋮⋮</span>' : ''}</li>`).join('')
     : '<li class="empty-row">Sin cartas</li>';
   const info = [];
   info.push(custom ? 'Mi orden · mantén pulsada una carta para moverla'
     : 'Por ' + SORTS.find(x => x[0] === s.sortBy)[1].toLowerCase() + (s.sortDir === 'desc' ? ' ↓' : ' ↑'));
   if (s.filterSets.length) info.push(s.filterSets.length === 1 ? s.filterSets[0] : `${s.filterSets.length} expansiones`);
+  if (s.filterTypes.length) info.push(s.filterTypes.join(', '));
   if (s.dexFrom !== '' || s.dexTo !== '') info.push(`Pokédex ${s.dexFrom || '…'}–${s.dexTo || '…'}`);
-  if (s.filterSets.length || s.dexFrom !== '' || s.dexTo !== '' || $('#search').value.trim()) info.push(`${list.length} cartas`);
+  if (s.filterSets.length || s.filterTypes.length || s.dexFrom !== '' || s.dexTo !== '' || $('#search').value.trim()) info.push(`${list.length} cartas`);
   $('#collInfo').textContent = info.join(' · ');
   $('#sortDot').hidden = !filtersActive();
   $('#setList').innerHTML = [...new Set(state.cards.map(c => c.set).filter(Boolean))].map(x => `<option value="${esc(x)}">`).join('');
@@ -556,6 +607,10 @@ function renderSortDialog() {
   const sets = [...new Set(state.cards.filter(c => c.group === groupFilter).map(c => c.set).filter(Boolean))].sort(coll.compare);
   $('#setChips').innerHTML = `<button type="button" data-set="" class="${s.filterSets.length ? '' : 'on'}">Todas</button>` +
     sets.map(x => `<button type="button" data-set="${esc(x)}" class="${s.filterSets.includes(x) ? 'on' : ''}">${esc(x)}</button>`).join('');
+  const types = [...new Set(state.cards.filter(c => c.group === groupFilter).flatMap(cardTypes))]
+    .sort((a, b) => typeOrder({ type: a }) - typeOrder({ type: b }));
+  $('#typeChips').innerHTML = `<button type="button" data-type="" class="${s.filterTypes.length ? '' : 'on'}">Todos</button>` +
+    types.map(t => `<button type="button" data-type="${esc(t)}" class="${s.filterTypes.includes(t) ? 'on' : ''}"><i class="tdot" style="background:${state.look.typeColors[t] || '#999'}"></i>${esc(t)}</button>`).join('');
   $('#dexFrom').value = s.dexFrom;
   $('#dexTo').value = s.dexTo;
 }
@@ -563,11 +618,17 @@ function sortChanged() { save(); renderSortDialog(); renderPool(); }
 $('#btnSort').addEventListener('click', () => { renderSortDialog(); dlgSort.showModal(); });
 $('#btnSortDone').addEventListener('click', () => dlgSort.close());
 $('#btnSortReset').addEventListener('click', () => {
-  Object.assign(state.settings, { sortBy: 'custom', sortDir: 'asc', filterSets: [], dexFrom: '', dexTo: '' });
+  Object.assign(state.settings, { sortBy: 'custom', sortDir: 'asc', filterSets: [], filterTypes: [], dexFrom: '', dexTo: '' });
   sortChanged();
 });
 $('#sortRows').addEventListener('click', e => { const r = e.target.closest('[data-s]'); if (r) { state.settings.sortBy = r.dataset.s; sortChanged(); } });
 $('#sortDir').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { state.settings.sortDir = b.dataset.d; sortChanged(); } });
+$('#typeChips').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const v = b.dataset.type, f = state.settings.filterTypes;
+  state.settings.filterTypes = !v ? [] : f.includes(v) ? f.filter(x => x !== v) : [...f, v];
+  sortChanged();
+});
 $('#setChips').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   const v = b.dataset.set, f = state.settings.filterSets;
@@ -664,7 +725,11 @@ function endDrag() {
 
 /* ----- Añadir / editar ----- */
 const dlgCard = $('#dlgCard'), formCard = $('#formCard');
-let editingId = null, formGroup = 'IR', formColorMode = 'group';
+let editingId = null, formGroup = 'IR', formColorMode = 'auto';
+const COLOR_MODE_TXT = { auto: 'Sigue lo elegido en Ajustes', group: 'Color del grupo', type: 'Color de su tipo', custom: 'Color propio de esta carta' };
+$('#cardType1').innerHTML = '<option value="">—</option>' + TYPES.map(([t]) => `<option>${t}</option>`).join('');
+$('#cardType2').innerHTML = '<option value="">Ninguno</option>' + TYPES.map(([t]) => `<option>${t}</option>`).join('');
+function formType() { return [$('#cardType1').value, $('#cardType2').value].filter(Boolean).filter((t, i, a) => a.indexOf(t) === i).join(' / '); }
 function setFormGroup(g) { formGroup = g; $$('#cardGroup button').forEach(b => b.classList.toggle('on', b.dataset.g === g)); updateColorPreview(); }
 function setColorMode(m) {
   formColorMode = m;
@@ -673,9 +738,10 @@ function setColorMode(m) {
   updateColorPreview();
 }
 function updateColorPreview() {
-  const c = formColorMode === 'custom' ? $('#cardColor').value : state.look.groupColors[formGroup];
-  $('#cardColorPreview').style.background = cardGrad(c);
-  $('#cardColorTxt').textContent = formColorMode === 'custom' ? 'Color propio de esta carta' : `Color del grupo ${GROUP_LABEL[formGroup]}`;
+  const tmp = { group: formGroup, type: formType(), color: $('#cardColor').value, colorMode: formColorMode };
+  $('#cardColorPreview').style.background = cardPaint(tmp);
+  $('#cardColorTxt').textContent = COLOR_MODE_TXT[formColorMode] +
+    (formColorMode === 'auto' ? ` (${state.settings.colorBy === 'type' ? 'tipo' : 'grupo'})` : '');
 }
 function openCard(card) {
   editingId = card ? card.id : null;
@@ -684,8 +750,11 @@ function openCard(card) {
   $('#btnDeleteCard').hidden = !card;
   if (card) for (const k of ['name', 'num', 'dex', 'set', 'date']) formCard.elements[k].value = card[k] || '';
   else formCard.elements.date.value = isoDate(new Date());
+  const ts = card ? cardTypes(card) : [];
+  $('#cardType1').value = TYPE_BY_KEY[typeKey(ts[0] || '')] || '';
+  $('#cardType2').value = TYPE_BY_KEY[typeKey(ts[1] || '')] || '';
   $('#cardColor').value = card && card.color ? card.color : state.look.groupColors[card ? card.group : groupFilter];
-  setColorMode(card && card.color ? 'custom' : 'group');
+  setColorMode(card ? (card.colorMode || 'auto') : 'auto');
   setFormGroup(card ? card.group : groupFilter);
   dlgCard.showModal();
 }
@@ -694,6 +763,8 @@ $('#btnCancelCard').addEventListener('click', () => dlgCard.close());
 $('#cardGroup').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setFormGroup(b.dataset.g); });
 $('#cardColorMode').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setColorMode(b.dataset.m); });
 $('#cardColor').addEventListener('input', updateColorPreview);
+$('#cardType1').addEventListener('change', updateColorPreview);
+$('#cardType2').addEventListener('change', updateColorPreview);
 poolUl.addEventListener('click', e => {
   if (suppressClick) return;
   const li = e.target.closest('li[data-id]'); if (li) openCard(cardById(li.dataset.id));
@@ -705,7 +776,7 @@ formCard.addEventListener('submit', e => {
   let dex = f.dex.value.trim();
   if (/^\d+$/.test(dex)) dex = dex.padStart(4, '0');
   const data = { name, group: formGroup, num: f.num.value.trim(), set: f.set.value.trim(), dex, date: f.date.value,
-    color: formColorMode === 'custom' ? $('#cardColor').value : '' };
+    type: formType(), colorMode: formColorMode, color: formColorMode === 'custom' ? $('#cardColor').value : '' };
   if (editingId) {
     Object.assign(cardById(editingId), data);
     toast('Carta actualizada');
@@ -838,6 +909,11 @@ function renderLookSettings() {
   $$('#bgStyle button').forEach(b => b.classList.toggle('on', b.dataset.v === lk.bgStyle));
   $('#colIR').value = lk.groupColors.IR;
   $('#colOT').value = lk.groupColors.OT;
+  $$('#colorBy button').forEach(b => b.classList.toggle('on', b.dataset.v === state.settings.colorBy));
+  $('#typeColorRows').innerHTML = TYPES.map(([t]) =>
+    `<label class="row">${t}<input type="color" class="color-in" data-tc="${t}" value="${lk.typeColors[t]}"></label>`).join('');
+  $('#groupColorGroup').classList.toggle('dim', state.settings.colorBy !== 'group');
+  $('#typeColorRows').classList.toggle('dim', state.settings.colorBy !== 'type');
   const fontRows = (key) => Object.entries(FONTS).map(([k, f]) => `
     <div class="row font-opt ${lk[key] === k ? 'on' : ''}" data-font="${k}" data-key="${key}">
       <span class="sample" style="font-family:${f.css.replace(/"/g, '&quot;')}">${key === 'fontTitle' ? 'Pick Your Card' : 'Starly · Illustration Rare'}<small>${f.name}</small></span>
@@ -864,6 +940,14 @@ for (const g of ['IR', 'OT']) {
   el.addEventListener('input', () => { state.look.groupColors[g] = el.value; applyLook(); });
   el.addEventListener('change', () => { save(); renderPool(); });
 }
+$('#colorBy').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  state.settings.colorBy = b.dataset.v;
+  save(); renderLookSettings(); renderPool();
+  if (!spinning) showIdle();
+});
+$('#typeColorRows').addEventListener('input', e => { const t = e.target.dataset.tc; if (t) state.look.typeColors[t] = e.target.value; });
+$('#typeColorRows').addEventListener('change', () => { save(); renderPool(); });
 $('#alphaRows').addEventListener('input', e => {
   const k = e.target.dataset.a; if (!k) return;
   state.look.transp[k] = +e.target.value;
@@ -917,7 +1001,7 @@ function toast(msg) {
   clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2400);
 }
 
-const APP_VERSION = '5 · diseños de cartas';
+const APP_VERSION = '6 · tipos';
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => reg.update()).catch(() => {});
   // Cuando llega una versión nueva, recarga una vez para mostrarla
