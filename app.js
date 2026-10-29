@@ -34,6 +34,7 @@ const DEFAULT_LOOK = {
   colors: Object.assign({}, PRESETS.claro),
   transp: { btn: 0, panel: 0, bar: 25 },   // % de transparencia
   bgStyle: 'solid',
+  groupColors: { IR: '#c9952e', OT: '#5e86b8' },
   fontTitle: 'cormorant',
   fontBody: 'system',
 };
@@ -48,6 +49,12 @@ const DEFAULT_SETTINGS = {
   notifOn: false,
   show: { num: true, set: true, dex: true },
   calWeeks: 8,
+  spinSecs: 4,
+  sortBy: 'custom',        // custom | set | name | num | dex | date
+  sortDir: 'asc',
+  filterSets: [],
+  dexFrom: '',
+  dexTo: '',
 };
 
 let state = load();
@@ -65,6 +72,8 @@ function load() {
   s.look = Object.assign({}, DEFAULT_LOOK, lk);
   s.look.colors = Object.assign({}, DEFAULT_LOOK.colors, lk.colors || {});
   s.look.transp = Object.assign({}, DEFAULT_LOOK.transp, lk.transp || {});
+  s.look.groupColors = Object.assign({}, DEFAULT_LOOK.groupColors, lk.groupColors || {});
+  s.history.forEach((h, i) => { if (!h.hid) h.hid = 'h' + h.at + '-' + i; });
   // Añade las cartas del pool inicial que falten (salvo las que quitaste)
   const have = new Set(s.cards.map(c => c.id));
   const removed = new Set(s.removed);
@@ -125,12 +134,17 @@ function hexToRgb(h) {
   const n = parseInt(h, 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
+function isDark(hex) { const [R, G, B] = hexToRgb(hex); return (R * .299 + G * .587 + B * .114) < 128; }
 const rgba = (hex, a) => `rgba(${hexToRgb(hex).join(',')},${a})`;
 function shade(hex, amt) {   // amt > 0 aclara, < 0 oscurece
   const [r, g, b] = hexToRgb(hex);
   const f = v => Math.round(amt > 0 ? v + (255 - v) * amt : v * (1 + amt));
   return '#' + [f(r), f(g), f(b)].map(v => v.toString(16).padStart(2, '0')).join('');
 }
+
+function cardColor(card) { return card.color || state.look.groupColors[card.group] || '#999999'; }
+function cardGrad(color) { return `linear-gradient(135deg, ${shade(color, .5)}, ${color} 55%, ${shade(color, -.28)})`; }
+function miniCard(card) { return `<span class="mini-card" style="background:${cardGrad(cardColor(card))}"></span>`; }
 
 /* =========================================================
    Apariencia
@@ -165,8 +179,13 @@ function applyLook() {
   r.setProperty('--font-body', fb.css);
   r.setProperty('--body-size', (16 * fb.scale).toFixed(1) + 'px');
   $('#themeColor').setAttribute('content', c.bg);
-  const [R, G, B] = hexToRgb(c.bg);
-  document.documentElement.style.colorScheme = (R * .299 + G * .587 + B * .114) < 128 ? 'dark' : 'light';
+  const dark = isDark(c.bg);
+  document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+  for (const g of ['IR', 'OT']) {
+    const gc = lk.groupColors[g], k = g.toLowerCase();
+    r.setProperty(`--${k}`, shade(gc, dark ? .3 : -.18));
+    r.setProperty(`--${k}-bg`, rgba(gc, dark ? .22 : .16));
+  }
 }
 darkMQ.addEventListener?.('change', () => { if (state.look.preset === 'auto') { applyLook(); renderLookSettings(); } });
 
@@ -191,7 +210,7 @@ function frontHTML(card) {
   const meta = details(card).filter(([k]) => k !== 'Pokédex');
   const dex = state.settings.show.dex && card.dex && card.dex !== '-' ? '#' + card.dex : '';
   return `<div class="face front">
-    <div class="band ${card.group}">${dex ? `<span class="dex">${esc(dex)}</span>` : ''}</div>
+    <div class="band" style="background:${cardGrad(cardColor(card))}">${dex ? `<span class="dex">${esc(dex)}</span>` : ''}</div>
     <div class="fbody">
       <p class="fname">${esc(n)}</p>
       ${code ? `<p class="fcode">${esc(code)}</p>` : ''}
@@ -227,7 +246,8 @@ function spin(card, eyebrow) {
   spinning = true;
   btnPick.disabled = true;
   $('#pickEyebrow').innerHTML = '&nbsp;';
-  const total = 34 + randInt(8);           // nº de cartas que pasan
+  const secs = Math.min(10, Math.max(1, +state.settings.spinSecs || 4));
+  const total = Math.round(10 + secs * 7) + randInt(5);   // nº de cartas que pasan
   const target = total - 4;                // la que se detiene en el centro
   let html = '';
   for (let i = 0; i < total; i++) html += pcard(i === target ? card : null);
@@ -236,7 +256,7 @@ function spin(card, eyebrow) {
   const w = cardWidth(), gap = 16, step = w + gap, cw = reel.clientWidth;
   const startX = cw * .55;                                  // entran por la derecha
   const endX = cw / 2 - (target * step + w / 2);           // centrada
-  const duration = 3000 + randInt(2001);                   // 3–5 segundos
+  const duration = secs * 1000;                            // 1–10 s (Ajustes)
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const anim = track.animate(
     [{ transform: `translateX(${startX}px)` }, { transform: `translateX(${endX}px)` }],
@@ -268,23 +288,67 @@ btnPick.addEventListener('click', () => {
    Historial
    ========================================================= */
 function addHistory(card, at, source) {
-  state.history.unshift({ id: card.id, name: card.name, group: card.group, at, source });
-  state.history = state.history.slice(0, 100);
+  state.history.unshift({ hid: 'h' + at + '-' + randInt(1e6), id: card.id, name: card.name, group: card.group, at, source });
+  state.history = state.history.slice(0, 300);
 }
+const dlgHist = $('#dlgHistory'), histList = $('#histList');
+let histSelecting = false;
+const histSel = new Set();
+
 function renderHistory() {
-  const ul = $('#histList');
-  ul.innerHTML = state.history.length ? state.history.map(h => `
-    <li><span class="mini-card ${h.group}"></span>
+  const has = state.history.length > 0;
+  histList.classList.toggle('selecting', histSelecting);
+  histList.innerHTML = has ? state.history.map(h => {
+    const card = cardById(h.id) || h;
+    return `<li data-hid="${esc(h.hid)}" class="${histSel.has(h.hid) ? 'on' : ''}"><span class="sel"></span>${miniCard(card)}
       <div class="li-main"><div class="li-name">${esc(h.name)}</div>
       <div class="li-sub">${GROUP_LABEL[h.group]}${h.source === 'sched' ? ' · programada' : ''}</div></div>
-      <span class="when">${fmtWhen(h.at)}</span></li>`).join('')
-    : '<li class="empty-row">Aún no hay elecciones</li>';
+      <span class="when">${fmtWhen(h.at)}</span></li>`;
+  }).join('') : '<li class="empty-row">Aún no hay elecciones</li>';
+  $('#btnSelHist').textContent = histSelecting ? 'Cancelar' : 'Seleccionar';
+  $('#btnSelHist').hidden = !has;
+  $('#histActions').hidden = !has || histSelecting;
+  $('#histSelActions').hidden = !has || !histSelecting;
+  $('#btnDelSel').textContent = `Eliminar (${histSel.size})`;
+  $('#btnDelSel').disabled = !histSel.size;
+  $('#btnSelAll').textContent = histSel.size === state.history.length ? 'Quitar selección' : 'Seleccionar todo';
+  $('#histQty').max = state.history.length;
 }
-const dlgHist = $('#dlgHistory');
-$('#btnHistory').addEventListener('click', () => { renderHistory(); dlgHist.showModal(); });
+function removeHistory(pred) { state.history = state.history.filter(h => !pred(h)); save(); }
+
+$('#btnHistory').addEventListener('click', () => { histSelecting = false; histSel.clear(); renderHistory(); dlgHist.showModal(); });
 $('#btnCloseHist').addEventListener('click', () => dlgHist.close());
+$('#btnSelHist').addEventListener('click', () => { histSelecting = !histSelecting; histSel.clear(); renderHistory(); });
+histList.addEventListener('click', e => {
+  if (!histSelecting) return;
+  const li = e.target.closest('li[data-hid]'); if (!li) return;
+  const id = li.dataset.hid;
+  histSel.has(id) ? histSel.delete(id) : histSel.add(id);
+  renderHistory();
+});
+$('#btnSelAll').addEventListener('click', () => {
+  if (histSel.size === state.history.length) histSel.clear();
+  else state.history.forEach(h => histSel.add(h.hid));
+  renderHistory();
+});
+$('#btnDelSel').addEventListener('click', () => {
+  const n = histSel.size; if (!n) return;
+  if (!confirm(`¿Eliminar ${n} ${n === 1 ? 'elección' : 'elecciones'} del historial?`)) return;
+  removeHistory(h => histSel.has(h.hid));
+  histSel.clear(); histSelecting = false; renderHistory(); toast('Eliminadas');
+});
+$('#btnDelQty').addEventListener('click', () => {
+  const total = state.history.length;
+  const n = Math.min(total, Math.max(1, parseInt($('#histQty').value, 10) || 0));
+  if (!n) return;
+  const which = $('#histWhich').value;
+  if (!confirm(`¿Eliminar las ${n} elecciones ${which === 'old' ? 'más antiguas' : 'más recientes'}?`)) return;
+  // el historial está ordenado de más reciente a más antigua
+  state.history = which === 'new' ? state.history.slice(n) : state.history.slice(0, total - n);
+  save(); renderHistory(); toast(`${n} eliminadas`);
+});
 $('#btnClearHist').addEventListener('click', () => {
-  if (!state.history.length || !confirm('¿Borrar el historial?')) return;
+  if (!state.history.length || !confirm('¿Borrar todo el historial?')) return;
   state.history = []; save(); renderHistory();
 });
 
@@ -416,22 +480,60 @@ async function exportCalendar() {
 /* =========================================================
    Colección
    ========================================================= */
+const SORTS = [['custom', 'Mi orden'], ['set', 'Expansión'], ['name', 'Nombre'], ['num', 'Nº de carta'], ['dex', 'Nº Pokédex'], ['date', 'Fecha de salida']];
+const coll = new Intl.Collator('es', { numeric: true, sensitivity: 'base' });
+function numKey(c) { const m = String(c.num || '').match(/\d+/); return m ? +m[0] : Infinity; }
+function dexKey(c) { const n = parseInt(c.dex, 10); return isNaN(n) ? Infinity : n; }
+const SORT_FN = {
+  set:  (a, b) => coll.compare(a.set || '', b.set || '') || numKey(a) - numKey(b),
+  name: (a, b) => coll.compare(a.name, b.name),
+  num:  (a, b) => numKey(a) - numKey(b) || coll.compare(a.set || '', b.set || ''),
+  dex:  (a, b) => dexKey(a) - dexKey(b) || coll.compare(a.name, b.name),
+  date: (a, b) => (a.date || '9999').localeCompare(b.date || '9999') || coll.compare(a.name, b.name),
+};
+
 let groupFilter = 'IR';
+function visibleCards() {
+  const s = state.settings, q = $('#search').value.trim().toLowerCase();
+  const from = s.dexFrom === '' ? -Infinity : +s.dexFrom, to = s.dexTo === '' ? Infinity : +s.dexTo;
+  const dexOn = s.dexFrom !== '' || s.dexTo !== '';
+  let list = state.cards
+    .filter(c => c.group === groupFilter)
+    .filter(c => !s.filterSets.length || s.filterSets.includes(c.set))
+    .filter(c => !dexOn || (dexKey(c) >= from && dexKey(c) <= to))
+    .filter(c => !q || [c.name, c.set, c.num, c.dex].join(' ').toLowerCase().includes(q));
+  if (s.sortBy !== 'custom' && SORT_FN[s.sortBy]) {
+    list = list.slice().sort(SORT_FN[s.sortBy]);
+    if (s.sortDir === 'desc') list.reverse();
+  }
+  return list;
+}
+function filtersActive() {
+  const s = state.settings;
+  return s.sortBy !== 'custom' || s.filterSets.length || s.dexFrom !== '' || s.dexTo !== '';
+}
 function renderPool() {
-  const q = $('#search').value.trim().toLowerCase();
+  const s = state.settings;
   const nIR = state.cards.filter(c => c.group === 'IR').length;
   $('#nIR').textContent = nIR;
   $('#nOT').textContent = state.cards.length - nIR;
-  const list = state.cards
-    .filter(c => c.group === groupFilter)
-    .filter(c => !q || [c.name, c.set, c.num, c.dex].join(' ').toLowerCase().includes(q))
-    .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const list = visibleCards();
+  const custom = s.sortBy === 'custom';
   $('#poolList').innerHTML = list.length ? list.map(c => `
-    <li data-id="${esc(c.id)}"><span class="mini-card ${c.group}"></span>
+    <li data-id="${esc(c.id)}">${miniCard(c)}
       <div class="li-main"><div class="li-name">${esc(c.name)}</div>
-      <div class="li-sub">${esc([c.set, c.num && 'Nº ' + c.num, c.dex && c.dex !== '-' && '#' + c.dex].filter(Boolean).join(' · '))}</div></div></li>`).join('')
+      <div class="li-sub">${esc([c.set, c.num && 'Nº ' + c.num, c.dex && c.dex !== '-' && '#' + c.dex].filter(Boolean).join(' · '))}</div></div>
+      ${custom ? '<span class="grip" aria-hidden="true">⋮⋮</span>' : ''}</li>`).join('')
     : '<li class="empty-row">Sin cartas</li>';
-  $('#setList').innerHTML = [...new Set(state.cards.map(c => c.set).filter(Boolean))].map(s => `<option value="${esc(s)}">`).join('');
+  const info = [];
+  info.push(custom ? 'Mi orden · mantén pulsada una carta para moverla'
+    : 'Por ' + SORTS.find(x => x[0] === s.sortBy)[1].toLowerCase() + (s.sortDir === 'desc' ? ' ↓' : ' ↑'));
+  if (s.filterSets.length) info.push(s.filterSets.length === 1 ? s.filterSets[0] : `${s.filterSets.length} expansiones`);
+  if (s.dexFrom !== '' || s.dexTo !== '') info.push(`Pokédex ${s.dexFrom || '…'}–${s.dexTo || '…'}`);
+  if (s.filterSets.length || s.dexFrom !== '' || s.dexTo !== '' || $('#search').value.trim()) info.push(`${list.length} cartas`);
+  $('#collInfo').textContent = info.join(' · ');
+  $('#sortDot').hidden = !filtersActive();
+  $('#setList').innerHTML = [...new Set(state.cards.map(c => c.set).filter(Boolean))].map(x => `<option value="${esc(x)}">`).join('');
 }
 $('#search').addEventListener('input', renderPool);
 $('#groupFilter').addEventListener('click', e => {
@@ -441,31 +543,167 @@ $('#groupFilter').addEventListener('click', e => {
   renderPool();
 });
 
-/* Añadir / editar */
+/* ----- Ordenar y filtrar ----- */
+const dlgSort = $('#dlgSort');
+function renderSortDialog() {
+  const s = state.settings;
+  $('#sortRows').innerHTML = SORTS.map(([k, label]) =>
+    `<div class="row opt ${s.sortBy === k ? 'on' : ''}" data-s="${k}"><span>${label}</span><span class="tick"></span></div>`).join('');
+  $('#sortDir').classList.toggle('hidden', s.sortBy === 'custom');
+  $$('#sortDir button').forEach(b => b.classList.toggle('on', b.dataset.d === s.sortDir));
+  const sets = [...new Set(state.cards.filter(c => c.group === groupFilter).map(c => c.set).filter(Boolean))].sort(coll.compare);
+  $('#setChips').innerHTML = `<button type="button" data-set="" class="${s.filterSets.length ? '' : 'on'}">Todas</button>` +
+    sets.map(x => `<button type="button" data-set="${esc(x)}" class="${s.filterSets.includes(x) ? 'on' : ''}">${esc(x)}</button>`).join('');
+  $('#dexFrom').value = s.dexFrom;
+  $('#dexTo').value = s.dexTo;
+}
+function sortChanged() { save(); renderSortDialog(); renderPool(); }
+$('#btnSort').addEventListener('click', () => { renderSortDialog(); dlgSort.showModal(); });
+$('#btnSortDone').addEventListener('click', () => dlgSort.close());
+$('#btnSortReset').addEventListener('click', () => {
+  Object.assign(state.settings, { sortBy: 'custom', sortDir: 'asc', filterSets: [], dexFrom: '', dexTo: '' });
+  sortChanged();
+});
+$('#sortRows').addEventListener('click', e => { const r = e.target.closest('[data-s]'); if (r) { state.settings.sortBy = r.dataset.s; sortChanged(); } });
+$('#sortDir').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { state.settings.sortDir = b.dataset.d; sortChanged(); } });
+$('#setChips').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const v = b.dataset.set, f = state.settings.filterSets;
+  state.settings.filterSets = !v ? [] : f.includes(v) ? f.filter(x => x !== v) : [...f, v];
+  sortChanged();
+});
+for (const id of ['dexFrom', 'dexTo']) $('#' + id).addEventListener('input', e => {
+  state.settings[id] = e.target.value === '' ? '' : String(Math.max(0, parseInt(e.target.value, 10) || 0));
+  save(); renderPool();
+});
+
+/* ----- Reordenar manteniendo pulsado ----- */
+const poolUl = $('#poolList');
+let press = null, drag = null, suppressClick = false;
+
+poolUl.addEventListener('contextmenu', e => e.preventDefault());
+poolUl.addEventListener('pointerdown', e => {
+  if (e.button !== 0 || drag) return;
+  const li = e.target.closest('li[data-id]'); if (!li) return;
+  press = { li, x: e.clientX, y: e.clientY, pid: e.pointerId, timer: setTimeout(() => startDrag(), 380) };
+});
+poolUl.addEventListener('pointermove', e => {
+  if (drag) { drag.clientY = e.clientY; updateDrag(); return; }
+  if (press && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 8) cancelPress();
+});
+function pointerEnd() {
+  if (drag) return endDrag();
+  cancelPress();
+  if (suppressClick) setTimeout(() => { suppressClick = false; }, 350);
+}
+window.addEventListener('pointerup', pointerEnd);
+window.addEventListener('pointercancel', pointerEnd);
+// Mientras se arrastra, que la pantalla no haga scroll con el dedo
+document.addEventListener('touchmove', e => { if (drag) e.preventDefault(); }, { passive: false });
+
+function cancelPress() { if (press) clearTimeout(press.timer); press = null; }
+
+function startDrag() {
+  const p = press; press = null;
+  if (!p) return;
+  suppressClick = true;
+  if (state.settings.sortBy !== 'custom') {
+    toast('Para mover cartas, elige «Mi orden» en Ordenar');
+    return;
+  }
+  const items = Array.from(poolUl.querySelectorAll('li[data-id]'));
+  const rects = items.map(li => { const r = li.getBoundingClientRect(); return { top: r.top + scrollY, h: r.height }; });
+  const idx = items.indexOf(p.li);
+  drag = { li: p.li, items, rects, idx, newIdx: idx, startY: p.y + scrollY, clientY: p.y };
+  try { p.li.setPointerCapture(p.pid); } catch (e) {}
+  poolUl.classList.add('dragging-on');
+  p.li.classList.add('dragging');
+  if (navigator.vibrate) navigator.vibrate(12);
+  updateDrag();
+  requestAnimationFrame(autoScroll);
+}
+function updateDrag() {
+  const d = drag; if (!d) return;
+  const dy = d.clientY + scrollY - d.startY;
+  d.li.style.transform = `translateY(${dy}px) scale(1.03)`;
+  const me = d.rects[d.idx], center = me.top + me.h / 2 + dy;
+  let n = d.idx;
+  for (let i = d.idx + 1; i < d.items.length; i++) if (center > d.rects[i].top + d.rects[i].h / 2) n = i;
+  for (let i = d.idx - 1; i >= 0; i--) if (center < d.rects[i].top + d.rects[i].h / 2) n = i;
+  d.newIdx = n;
+  d.items.forEach((li, i) => {
+    if (i === d.idx) return;
+    li.style.transform = (i > d.idx && i <= n) ? `translateY(${-me.h}px)` : (i < d.idx && i >= n) ? `translateY(${me.h}px)` : '';
+  });
+}
+function autoScroll() {
+  if (!drag) return;
+  const y = drag.clientY, top = 90, bottom = innerHeight - 150;
+  const v = y < top ? -Math.ceil((top - y) / 6) : y > bottom ? Math.ceil((y - bottom) / 6) : 0;
+  if (v) { scrollBy(0, v); updateDrag(); }
+  requestAnimationFrame(autoScroll);
+}
+function endDrag() {
+  const d = drag; drag = null;
+  poolUl.classList.remove('dragging-on');
+  d.items.forEach(li => { li.style.transform = ''; li.classList.remove('dragging'); });
+  if (d.newIdx !== d.idx) {
+    const movedId = d.li.dataset.id, targetId = d.items[d.newIdx].dataset.id;
+    const moved = cardById(movedId);
+    state.cards = state.cards.filter(c => c.id !== movedId);
+    let at = state.cards.findIndex(c => c.id === targetId);
+    if (d.newIdx > d.idx) at += 1;
+    state.cards.splice(at, 0, moved);
+    save();
+    renderPool();
+  }
+  setTimeout(() => { suppressClick = false; }, 350);
+}
+
+/* ----- Añadir / editar ----- */
 const dlgCard = $('#dlgCard'), formCard = $('#formCard');
-let editingId = null, formGroup = 'IR';
-function setFormGroup(g) { formGroup = g; $$('#cardGroup button').forEach(b => b.classList.toggle('on', b.dataset.g === g)); }
+let editingId = null, formGroup = 'IR', formColorMode = 'group';
+function setFormGroup(g) { formGroup = g; $$('#cardGroup button').forEach(b => b.classList.toggle('on', b.dataset.g === g)); updateColorPreview(); }
+function setColorMode(m) {
+  formColorMode = m;
+  $$('#cardColorMode button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
+  $('#cardColor').disabled = m !== 'custom';
+  updateColorPreview();
+}
+function updateColorPreview() {
+  const c = formColorMode === 'custom' ? $('#cardColor').value : state.look.groupColors[formGroup];
+  $('#cardColorPreview').style.background = cardGrad(c);
+  $('#cardColorTxt').textContent = formColorMode === 'custom' ? 'Color propio de esta carta' : `Color del grupo ${GROUP_LABEL[formGroup]}`;
+}
 function openCard(card) {
   editingId = card ? card.id : null;
   formCard.reset();
   $('#cardDlgTitle').textContent = card ? 'Editar carta' : 'Nueva carta';
   $('#btnDeleteCard').hidden = !card;
-  setFormGroup(card ? card.group : groupFilter);
   if (card) for (const k of ['name', 'num', 'dex', 'set', 'date']) formCard.elements[k].value = card[k] || '';
   else formCard.elements.date.value = isoDate(new Date());
+  $('#cardColor').value = card && card.color ? card.color : state.look.groupColors[card ? card.group : groupFilter];
+  setColorMode(card && card.color ? 'custom' : 'group');
+  setFormGroup(card ? card.group : groupFilter);
   dlgCard.showModal();
 }
 $('#btnAdd').addEventListener('click', () => openCard(null));
 $('#btnCancelCard').addEventListener('click', () => dlgCard.close());
 $('#cardGroup').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setFormGroup(b.dataset.g); });
-$('#poolList').addEventListener('click', e => { const li = e.target.closest('li[data-id]'); if (li) openCard(cardById(li.dataset.id)); });
+$('#cardColorMode').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setColorMode(b.dataset.m); });
+$('#cardColor').addEventListener('input', updateColorPreview);
+poolUl.addEventListener('click', e => {
+  if (suppressClick) return;
+  const li = e.target.closest('li[data-id]'); if (li) openCard(cardById(li.dataset.id));
+});
 formCard.addEventListener('submit', e => {
   e.preventDefault();
   const f = formCard.elements, name = f.name.value.trim();
   if (!name) { f.name.focus(); return toast('Escribe el nombre y código'); }
   let dex = f.dex.value.trim();
   if (/^\d+$/.test(dex)) dex = dex.padStart(4, '0');
-  const data = { name, group: formGroup, num: f.num.value.trim(), set: f.set.value.trim(), dex, date: f.date.value };
+  const data = { name, group: formGroup, num: f.num.value.trim(), set: f.set.value.trim(), dex, date: f.date.value,
+    color: formColorMode === 'custom' ? $('#cardColor').value : '' };
   if (editingId) {
     Object.assign(cardById(editingId), data);
     toast('Carta actualizada');
@@ -497,6 +735,8 @@ function fillSettings() {
   $('#schedMonthDay').value = s.monthDay;
   $('#notifOn').checked = s.notifOn && notifSupported() && Notification.permission === 'granted';
   $('#calWeeks').value = String(s.calWeeks);
+  $('#spinSecs').value = s.spinSecs;
+  $('#spinVal').textContent = fmtSecs(s.spinSecs);
   $$('[data-show]').forEach(cb => cb.checked = !!s.show[cb.dataset.show]);
   $$('#fWeekdays button').forEach(b => b.classList.toggle('on', s.weekdays.includes(+b.dataset.d)));
   renderTimes(); syncSchedUI(); renderNotifNote(); renderNext(); renderLookSettings();
@@ -556,6 +796,12 @@ $('#notifOn').addEventListener('change', async e => {
   } else state.settings.notifOn = false;
   save(); renderNotifNote();
 });
+function fmtSecs(v) { return String(v).replace('.', ',') + ' s'; }
+$('#spinSecs').addEventListener('input', e => {
+  state.settings.spinSecs = +e.target.value;
+  $('#spinVal').textContent = fmtSecs(e.target.value);
+});
+$('#spinSecs').addEventListener('change', save);
 $('#calWeeks').addEventListener('change', e => { state.settings.calWeeks = +e.target.value; save(); });
 $('#btnCalendar').addEventListener('click', exportCalendar);
 $$('[data-show]').forEach(cb => cb.addEventListener('change', () => { state.settings.show[cb.dataset.show] = cb.checked; save(); }));
@@ -577,6 +823,8 @@ function renderLookSettings() {
     `<label class="row range-row">${label}<span class="val" id="tv-${k}">${lk.transp[k]} %</span>
       <input type="range" min="0" max="90" step="5" data-a="${k}" value="${lk.transp[k]}"></label>`).join('');
   $$('#bgStyle button').forEach(b => b.classList.toggle('on', b.dataset.v === lk.bgStyle));
+  $('#colIR').value = lk.groupColors.IR;
+  $('#colOT').value = lk.groupColors.OT;
   const fontRows = (key) => Object.entries(FONTS).map(([k, f]) => `
     <div class="row font-opt ${lk[key] === k ? 'on' : ''}" data-font="${k}" data-key="${key}">
       <span class="sample" style="font-family:${f.css.replace(/"/g, '&quot;')}">${key === 'fontTitle' ? 'Pick Your Card' : 'Starly · Illustration Rare'}<small>${f.name}</small></span>
@@ -598,6 +846,11 @@ $('#colorRows').addEventListener('input', e => {
   $$('#presets .preset').forEach(p => p.classList.toggle('on', p.dataset.p === 'custom'));
 });
 $('#colorRows').addEventListener('change', () => { save(); renderLookSettings(); });
+for (const g of ['IR', 'OT']) {
+  const el = $('#col' + g);
+  el.addEventListener('input', () => { state.look.groupColors[g] = el.value; applyLook(); });
+  el.addEventListener('change', () => { save(); renderPool(); });
+}
 $('#alphaRows').addEventListener('input', e => {
   const k = e.target.dataset.a; if (!k) return;
   state.look.transp[k] = +e.target.value;

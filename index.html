@@ -40,7 +40,14 @@
     <button data-g="IR" class="on">Illustration Rare <span class="n" id="nIR"></span></button>
     <button data-g="OT">Others <span class="n" id="nOT"></span></button>
   </div>
-  <input type="search" id="search" placeholder="Buscar carta, expansión, Nº…" autocomplete="off">
+  <div class="search-row">
+    <input type="search" id="search" placeholder="Buscar carta, expansión, Nº…" autocomplete="off">
+    <button class="icon-btn outline" id="btnSort" aria-label="Ordenar y filtrar">
+      <svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+      <i class="dot-on" id="sortDot" hidden></i>
+    </button>
+  </div>
+  <p class="coll-info" id="collInfo"></p>
   <ul class="list pool" id="poolList"></ul>
 </section>
 
@@ -91,6 +98,13 @@
   <p class="foot" id="notifNote"></p>
   <p class="foot">El Calendario recibe las próximas elecciones con la carta ya escogida, así el aviso salta aunque la app esté cerrada, y la app muestra la misma carta a esa hora.</p>
 
+  <h4>Animación</h4>
+  <div class="group">
+    <label class="row range-row">Duración al elegir<span class="val" id="spinVal"></span>
+      <input type="range" id="spinSecs" min="1" max="10" step="0.5"></label>
+  </div>
+  <p class="foot">Tiempo que tardan las cartas en rodar hasta pararse (de 1 a 10 segundos).</p>
+
   <h4>Al escoger una carta, mostrar</h4>
   <div class="group">
     <label class="row check"><input type="checkbox" data-show="num"> Nº</label>
@@ -101,6 +115,13 @@
 
   <h4>Tema</h4>
   <div class="presets" id="presets"></div>
+
+  <h4>Colores de los grupos</h4>
+  <div class="group">
+    <label class="row">Illustration Rare <input type="color" class="color-in" id="colIR"></label>
+    <label class="row">Other <input type="color" class="color-in" id="colOT"></label>
+  </div>
+  <p class="foot">Se usan en la etiqueta, la banda de la carta y la colección. Cada carta puede tener además su propio color.</p>
 
   <h4>Colores</h4>
   <div class="group" id="colorRows"></div>
@@ -170,18 +191,66 @@
     <label class="fld">Expansión<input name="set" list="setList" placeholder="Scarlet &amp; Violet"></label>
     <datalist id="setList"></datalist>
     <label class="fld">Fecha de salida<input name="date" type="date"></label>
+    <div class="fld">Color de la carta
+      <div class="color-pick">
+        <div class="seg" id="cardColorMode">
+          <button type="button" data-m="group" class="on">Del grupo</button>
+          <button type="button" data-m="custom">Personalizado</button>
+        </div>
+        <input type="color" class="color-in big" id="cardColor" value="#c9952e">
+      </div>
+      <div class="card-preview"><span class="mini-card" id="cardColorPreview"></span><span id="cardColorTxt"></span></div>
+    </div>
     <button type="button" class="danger" id="btnDeleteCard" hidden>Quitar de la colección</button>
   </form>
+</dialog>
+
+<!-- Ordenar y filtrar -->
+<dialog id="dlgSort" class="sheet">
+  <div class="sheet-head">
+    <button type="button" class="link" id="btnSortReset">Restablecer</button>
+    <h3>Ordenar y filtrar</h3>
+    <button type="button" class="link strong" id="btnSortDone">Listo</button>
+  </div>
+  <h5>Ordenar por</h5>
+  <div class="group" id="sortRows"></div>
+  <div class="seg dir" id="sortDir">
+    <button type="button" data-d="asc">Ascendente ↑</button>
+    <button type="button" data-d="desc">Descendente ↓</button>
+  </div>
+  <p class="foot">En «Mi orden» mantén pulsada una carta y arrástrala para colocarla donde quieras.</p>
+  <h5>Expansión</h5>
+  <div class="chips" id="setChips"></div>
+  <h5>Nº Pokédex</h5>
+  <div class="two">
+    <label class="fld">Desde<input type="number" id="dexFrom" min="0" inputmode="numeric" placeholder="1"></label>
+    <label class="fld">Hasta<input type="number" id="dexTo" min="0" inputmode="numeric" placeholder="1025"></label>
+  </div>
 </dialog>
 
 <!-- Historial -->
 <dialog id="dlgHistory" class="sheet">
   <div class="sheet-head">
-    <button type="button" class="link" id="btnClearHist">Borrar</button>
+    <button type="button" class="link" id="btnSelHist">Seleccionar</button>
     <h3>Historial</h3>
     <button type="button" class="link strong" id="btnCloseHist">Listo</button>
   </div>
-  <ul class="list" id="histList"></ul>
+  <ul class="list hist" id="histList"></ul>
+  <div class="hist-actions" id="histActions">
+    <div class="by-qty">
+      <span>Eliminar las</span>
+      <input type="number" id="histQty" min="1" value="5" inputmode="numeric">
+      <select id="histWhich"><option value="old">más antiguas</option><option value="new">más recientes</option></select>
+      <button type="button" class="ghost" id="btnDelQty">Eliminar</button>
+    </div>
+    <button type="button" class="danger" id="btnClearHist">Borrar todo el historial</button>
+  </div>
+  <div class="hist-actions" id="histSelActions" hidden>
+    <div class="two">
+      <button type="button" class="ghost" id="btnSelAll">Seleccionar todo</button>
+      <button type="button" class="danger inline" id="btnDelSel">Eliminar (0)</button>
+    </div>
+  </div>
 </dialog>
 
 <div class="toast" id="toast" role="status"></div>
