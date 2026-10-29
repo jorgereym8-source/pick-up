@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f5f2" id="themeColor">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Pick up">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<title>Pick up</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=Montserrat:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;1,500;1,600&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="bg-layer" aria-hidden="true"></div>
+
+<!-- ============ PICK ============ -->
+<section class="screen active" id="scrPick" data-tab="pick">
+  <p class="eyebrow" id="pickEyebrow">&nbsp;</p>
+  <div class="reel" id="reel"></div>
+  <button class="pick-btn" id="btnPick"><span>Pick Your Card</span></button>
+  <p class="next" id="nextLine"></p>
+  <button class="link small" id="btnHistory">Historial</button>
+</section>
+
+<!-- ============ COLECCIÓN ============ -->
+<section class="screen" id="scrCollection" data-tab="collection">
+  <header class="scr-head">
+    <h1>Colección</h1>
+    <button class="icon-btn solid" id="btnAdd" aria-label="Añadir carta">
+      <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+  </header>
+  <div class="seg" id="groupFilter">
+    <button data-g="IR" class="on">Illustration Rare <span class="n" id="nIR"></span></button>
+    <button data-g="OT">Others <span class="n" id="nOT"></span></button>
+  </div>
+  <input type="search" id="search" placeholder="Buscar carta, expansión, Nº…" autocomplete="off">
+  <ul class="list pool" id="poolList"></ul>
+</section>
+
+<!-- ============ CONFIGURACIÓN ============ -->
+<section class="screen" id="scrSettings" data-tab="settings">
+  <header class="scr-head"><h1>Configuración</h1></header>
+
+  <h4>Elección programada</h4>
+  <div class="group">
+    <label class="row">Elección automática <input type="checkbox" id="schedOn" class="switch"></label>
+    <div id="schedFields">
+      <label class="row">Frecuencia
+        <select id="schedFreq">
+          <option value="daily">Todos los días</option>
+          <option value="weekdays">Días de la semana</option>
+          <option value="every">Cada X días</option>
+          <option value="monthly">Una vez al mes</option>
+        </select>
+      </label>
+      <div class="row col" id="fWeekdays">
+        <div class="days">
+          <button type="button" data-d="1">L</button><button type="button" data-d="2">M</button><button type="button" data-d="3">X</button><button type="button" data-d="4">J</button><button type="button" data-d="5">V</button><button type="button" data-d="6">S</button><button type="button" data-d="0">D</button>
+        </div>
+      </div>
+      <label class="row" id="fEvery1">Cada (días) <input type="number" id="schedEvery" min="1" max="365" value="2" class="short"></label>
+      <label class="row" id="fEvery2">Empezando el <input type="date" id="schedStart" class="short"></label>
+      <label class="row" id="fMonthly">Día del mes <input type="number" id="schedMonthDay" min="1" max="31" value="1" class="short"></label>
+      <div class="row col">
+        <span>Horas</span>
+        <div class="times" id="timesList"></div>
+        <div class="add-time">
+          <input type="time" id="newTime" value="20:00">
+          <button type="button" class="ghost" id="btnAddTime">Añadir hora</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="foot" id="nextLine2"></p>
+
+  <h4>Avisos</h4>
+  <div class="group">
+    <label class="row">Notificaciones <input type="checkbox" id="notifOn" class="switch"></label>
+    <button type="button" class="row action" id="btnCalendar">Añadir próximas elecciones al Calendario</button>
+    <label class="row">Semanas a añadir
+      <select id="calWeeks" class="short"><option value="4">4</option><option value="8">8</option><option value="12">12</option><option value="26">26</option></select>
+    </label>
+  </div>
+  <p class="foot" id="notifNote"></p>
+  <p class="foot">El Calendario recibe las próximas elecciones con la carta ya escogida, así el aviso salta aunque la app esté cerrada, y la app muestra la misma carta a esa hora.</p>
+
+  <h4>Al escoger una carta, mostrar</h4>
+  <div class="group">
+    <label class="row check"><input type="checkbox" data-show="num"> Nº</label>
+    <label class="row check"><input type="checkbox" data-show="set"> Expansión</label>
+    <label class="row check"><input type="checkbox" data-show="dex"> Nº Pokédex</label>
+  </div>
+  <p class="foot">El nombre con su código y el grupo (Illustration Rare / Other) salen siempre.</p>
+
+  <h4>Tema</h4>
+  <div class="presets" id="presets"></div>
+
+  <h4>Colores</h4>
+  <div class="group" id="colorRows"></div>
+  <div class="group">
+    <label class="row">Fondo
+      <div class="seg mini" id="bgStyle">
+        <button type="button" data-v="solid">Liso</button>
+        <button type="button" data-v="gradient">Degradado</button>
+      </div>
+    </label>
+  </div>
+
+  <h4>Translucidez</h4>
+  <div class="group" id="alphaRows"></div>
+  <p class="foot">0 % = opaco. Se aprecia más con el fondo degradado.</p>
+
+  <h4>Tipo de letra · títulos y botón</h4>
+  <div class="group" id="fontTitleRows"></div>
+  <h4>Tipo de letra · texto</h4>
+  <div class="group" id="fontBodyRows"></div>
+  <button type="button" class="ghost full" id="btnResetLook">Restablecer apariencia</button>
+
+  <h4>Datos</h4>
+  <div class="group">
+    <button type="button" class="row action" id="btnExport">Exportar copia de seguridad</button>
+    <button type="button" class="row action" id="btnImport">Importar copia de seguridad</button>
+  </div>
+  <input type="file" id="fileImport" accept="application/json" hidden>
+  <p class="foot">Tus cartas y ajustes se guardan en este dispositivo.</p>
+</section>
+
+<!-- ============ BARRA INFERIOR ============ -->
+<nav class="tabbar" id="tabbar">
+  <button data-tab="pick" class="on">
+    <svg viewBox="0 0 24 24"><rect x="7" y="3" width="11" height="16" rx="2" transform="rotate(8 12 11)"/><rect x="4.5" y="4.5" width="11" height="16" rx="2" transform="rotate(-6 10 12)"/></svg>
+    <span>Pick</span>
+  </button>
+  <button data-tab="collection">
+    <svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg>
+    <span>Colección</span>
+  </button>
+  <button data-tab="settings">
+    <svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+    <span>Ajustes</span>
+  </button>
+</nav>
+
+<!-- Añadir / editar carta -->
+<dialog id="dlgCard" class="sheet">
+  <form id="formCard" novalidate>
+    <div class="sheet-head">
+      <button type="button" class="link" id="btnCancelCard">Cancelar</button>
+      <h3 id="cardDlgTitle">Nueva carta</h3>
+      <button type="submit" class="link strong">Guardar</button>
+    </div>
+    <label class="fld">Nombre y código<input name="name" placeholder="Starly (SVI 221)"></label>
+    <div class="fld">Grupo
+      <div class="seg" id="cardGroup">
+        <button type="button" data-g="IR" class="on">Illustration Rare</button>
+        <button type="button" data-g="OT">Others</button>
+      </div>
+    </div>
+    <div class="two">
+      <label class="fld">Nº<input name="num" placeholder="221/198"></label>
+      <label class="fld">Nº Pokédex<input name="dex" inputmode="numeric" placeholder="0396"></label>
+    </div>
+    <label class="fld">Expansión<input name="set" list="setList" placeholder="Scarlet &amp; Violet"></label>
+    <datalist id="setList"></datalist>
+    <label class="fld">Fecha de salida<input name="date" type="date"></label>
+    <button type="button" class="danger" id="btnDeleteCard" hidden>Quitar de la colección</button>
+  </form>
+</dialog>
+
+<!-- Historial -->
+<dialog id="dlgHistory" class="sheet">
+  <div class="sheet-head">
+    <button type="button" class="link" id="btnClearHist">Borrar</button>
+    <h3>Historial</h3>
+    <button type="button" class="link strong" id="btnCloseHist">Listo</button>
+  </div>
+  <ul class="list" id="histList"></ul>
+</dialog>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script src="cards.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
