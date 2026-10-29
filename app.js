@@ -50,6 +50,7 @@ const DEFAULT_SETTINGS = {
   show: { num: true, set: true, dex: true },
   calWeeks: 8,
   spinSecs: 4,
+  backStyle: 'classic',   // classic | deco | tarot | holo | geo
   sortBy: 'custom',        // custom | set | name | num | dex | date
   sortDir: 'asc',
   filterSets: [],
@@ -218,8 +219,9 @@ function frontHTML(card) {
       ${meta.length ? `<ul class="fmeta">${meta.map(([k, v]) => `<li><span>${esc(k)}</span><b>${esc(v)}</b></li>`).join('')}</ul>` : ''}
     </div></div>`;
 }
-function pcard(card) {
-  return `<div class="pcard"><div class="inner">${backHTML()}${card ? frontHTML(card) : ''}</div></div>`;
+const BACKS = [['classic', 'Clásico'], ['deco', 'Art déco'], ['tarot', 'Tarot'], ['holo', 'Holo'], ['geo', 'Geométrico']];
+function pcard(card, style) {
+  return `<div class="pcard b-${style || state.settings.backStyle}"><div class="inner">${backHTML()}${card ? frontHTML(card) : ''}</div></div>`;
 }
 
 /* =========================================================
@@ -736,6 +738,7 @@ function fillSettings() {
   $('#notifOn').checked = s.notifOn && notifSupported() && Notification.permission === 'granted';
   $('#calWeeks').value = String(s.calWeeks);
   $('#spinSecs').value = s.spinSecs;
+  renderBacks();
   $('#spinVal').textContent = fmtSecs(s.spinSecs);
   $$('[data-show]').forEach(cb => cb.checked = !!s.show[cb.dataset.show]);
   $$('#fWeekdays button').forEach(b => b.classList.toggle('on', s.weekdays.includes(+b.dataset.d)));
@@ -795,6 +798,16 @@ $('#notifOn').addEventListener('change', async e => {
     state.settings.notifOn = true; toast('Notificaciones activadas');
   } else state.settings.notifOn = false;
   save(); renderNotifNote();
+});
+function renderBacks() {
+  $('#backRows').innerHTML = BACKS.map(([k, label]) =>
+    `<button type="button" class="back-opt ${state.settings.backStyle === k ? 'on' : ''}" data-b="${k}">${pcard(null, k)}<span>${label}</span></button>`).join('');
+}
+$('#backRows').addEventListener('click', e => {
+  const b = e.target.closest('[data-b]'); if (!b) return;
+  state.settings.backStyle = b.dataset.b;
+  save(); renderBacks();
+  if (!spinning) showIdle();
 });
 function fmtSecs(v) { return String(v).replace('.', ',') + ' s'; }
 $('#spinSecs').addEventListener('input', e => {
