@@ -1001,7 +1001,7 @@ function toast(msg) {
   clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2400);
 }
 
-const APP_VERSION = '6 · tipos';
+const APP_VERSION = '7 · icono nuevo';
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => reg.update()).catch(() => {});
   // Cuando llega una versión nueva, recarga una vez para mostrarla

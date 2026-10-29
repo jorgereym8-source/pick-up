@@ -1,5 +1,5 @@
-const CACHE = 'pickup-v6';
-const ASSETS = ['./', 'index.html', 'style.css?v=6', 'app.js?v=6', 'cards.js?v=6', 'manifest.json', 'icon-192.png', 'icon-512.png', 'icon-180.png'];
+const CACHE = 'pickup-v7';
+const ASSETS = ['./', 'index.html', 'style.css?v=7', 'app.js?v=7', 'cards.js?v=7', 'manifest.json', 'icon-192.png', 'icon-512.png', 'icon-180.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
 });
